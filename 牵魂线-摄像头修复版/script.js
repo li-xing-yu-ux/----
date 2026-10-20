@@ -8,7 +8,7 @@
 'use strict';
 (() => {
   const CONFIG = {
-    width: 1672, height: 940, puppetSize: 480,
+    width: 1672, height: 940, puppetSize: 462,
     moveSmooth: 9, jointSmooth: 12, chargeSeconds: 1.7,
     fireCooldown: .85, gestureStableMs: 170, minimumCharge: .16,
     openThreshold: .79, fistThreshold: .24,
@@ -27,7 +27,7 @@
   const saved=storage.get('stringkeeper-v2-progress',null);
   const validSaved=saved&&Array.isArray(saved.flags)&&saved.flags.length===6&&saved.flags.every(v=>typeof v==='boolean')&&Number.isInteger(saved.casts)&&saved.casts>=0&&saved.casts<=3;
   const state={
-    x:W*.5,y:535,tx:W*.5,ty:535,depth:1,targetDepth:1,
+    x:W*.5,y:527,tx:W*.5,ty:527,depth:1,targetDepth:1,
     armL:0,armR:0,targetArmL:0,targetArmR:0,tilt:0,targetTilt:0,
     charge:0,charging:false,spell:'idle',lastFire:-10,clock:0,recoil:0,
     mode:'mouse',phase:'off',handGesture:'none',candidate:'none',candidateAt:0,
@@ -140,23 +140,49 @@
   }
 
   // ★ 2 / 分段关节。独立绘制手臂与腿部，避免裙摆被手指动作拉扯。
-  const RIG={head:{x:500,y:245},leftShoulder:{x:375,y:339},rightShoulder:{x:625,y:339},leftElbow:{x:316,y:405},rightElbow:{x:684,y:405},leftHand:{x:155,y:500},rightHand:{x:845,y:500},leftHip:{x:435,y:650},rightHip:{x:565,y:650},leftKnee:{x:436,y:694},rightKnee:{x:564,y:694},leftFoot:{x:423,y:937},rightFoot:{x:577,y:937}};
+  const RIG={head:{x:500,y:245},leftShoulder:{x:375,y:350},rightShoulder:{x:625,y:350},leftElbow:{x:316,y:405},rightElbow:{x:684,y:405},leftHand:{x:155,y:500},rightHand:{x:845,y:500},leftHip:{x:435,y:620},rightHip:{x:565,y:620},leftKnee:{x:436,y:694},rightKnee:{x:564,y:694},leftFoot:{x:423,y:937},rightFoot:{x:577,y:937}};
   const bodyParts={};
-  const armMask=[[346,314],[409,339],[386,374],[341,427],[279,465],[218,493],[185,537],[126,539],[84,524],[83,483],[127,477],[122,438],[176,439],[209,458],[275,400],[305,375],[333,336]];
-  const upperMask=[[346,314],[409,339],[386,374],[341,427],[303,427],[285,393],[305,375],[333,336]];
-  const lowerMask=[[308,379],[341,398],[344,424],[279,465],[218,493],[185,537],[126,539],[84,524],[83,483],[127,477],[122,438],[176,439],[209,458],[275,400]];
-  const legMask=[[398,648],[475,648],[488,744],[474,857],[489,1000],[364,1000],[364,849],[373,735],[392,693]];
-  const thighMask=[[398,641],[475,641],[481,713],[390,718],[390,684]];
-  const shinMask=[[399,684],[474,684],[488,744],[474,857],[489,1000],[364,1000],[364,849],[373,735],[392,693]];
+  const armMask=[[349,344],[393,368],[386,374],[341,427],[279,465],[218,493],[185,537],[126,539],[84,524],[83,483],[127,477],[122,438],[176,439],[209,458],[275,400],[305,375]];
+  // 接缝在球形关节内结束，关节两侧保留重叠；不再让直线裁切穿过关节外缘。
+  const upperMask=[[349,344],[393,368],[386,374],[331,415],[316,421],[301,413],[299,400],[305,375]];
+  const lowerMask=[[315,394],[331,405],[328,424],[279,465],[218,493],[185,537],[126,539],[84,524],[83,483],[127,477],[122,438],[176,439],[209,458],[275,400],[303,393]];
+  const legMask=[[389,620],[482,620],[488,744],[474,857],[489,1000],[364,1000],[364,849],[373,735],[392,693]];
+  const thighMask=[[390,598],[483,598],[476,657],[462,694],[436,709],[410,694],[399,661]];
+  const shinMask=[[414,690],[436,679],[458,690],[474,710],[488,744],[474,857],[489,1000],[364,1000],[364,849],[373,735],[396,708]];
   const mirror=points=>points.map(([x,y])=>[1000-x,y]);
   function maskPath(c,poly){c.beginPath();poly.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();}
-  function layer(poly){const c=document.createElement('canvas');c.width=c.height=1000;const g=c.getContext('2d');g.save();maskPath(g,poly);g.clip();g.drawImage(images.puppet,0,0,1000,1000);g.restore();return c;}
+  function layer(poly,joint,radius=0){const c=document.createElement('canvas');c.width=c.height=1000;const g=c.getContext('2d');g.save();maskPath(g,poly);g.clip();g.drawImage(images.puppet,0,0,1000,1000);g.restore();if(joint){g.save();g.beginPath();g.arc(joint.x,joint.y,radius,0,TAU);g.clip();g.drawImage(images.puppet,0,0,1000,1000);g.restore();}return c;}
+  function jointCap(point,rx,ry){
+    const c=document.createElement('canvas');c.width=c.height=1000;const g=c.getContext('2d');
+    g.beginPath();g.ellipse(point.x,point.y,rx,ry,0,0,TAU);g.clip();
+    // 不透明的球窝位于原关节纹理下方，旋转时也不会透出蓝色背景。
+    const shade=g.createRadialGradient(point.x-rx*.3,point.y-ry*.3,1,point.x,point.y,Math.max(rx,ry));
+    shade.addColorStop(0,'#e0d2c0');shade.addColorStop(.7,'#b6a28f');shade.addColorStop(1,'#665349');
+    g.fillStyle=shade;g.fillRect(point.x-rx,point.y-ry,rx*2,ry*2);
+    g.drawImage(images.puppet,0,0,1000,1000);return c;
+  }
+  function shoulderSocket(point){
+    const c=document.createElement('canvas');c.width=c.height=1000;const g=c.getContext('2d');
+    g.beginPath();g.arc(point.x,point.y,25,0,TAU);g.clip();
+    // 肩部在完整袖口下方转动；圆形木质接头填满旋转扇区，袖口始终由躯干覆盖。
+    g.fillStyle='#c7b8a6';g.fillRect(point.x-25,point.y-25,50,50);
+    g.drawImage(images.puppet,345,365,28,28,point.x-25,point.y-25,50,50);
+    return c;
+  }
   function buildMesh(){
     bodyParts.torso=document.createElement('canvas');bodyParts.torso.width=bodyParts.torso.height=1000;
     const c=bodyParts.torso.getContext('2d');c.drawImage(images.puppet,0,0,1000,1000);c.globalCompositeOperation='destination-out';
     for(const poly of [armMask,mirror(armMask),legMask,mirror(legMask)]){maskPath(c,poly);c.fill();}
-    bodyParts.leftUpper=layer(upperMask);bodyParts.leftLower=layer(lowerMask);bodyParts.rightUpper=layer(mirror(upperMask));bodyParts.rightLower=layer(mirror(lowerMask));
-    bodyParts.leftThigh=layer(thighMask);bodyParts.leftShin=layer(shinMask);bodyParts.rightThigh=layer(mirror(thighMask));bodyParts.rightShin=layer(mirror(shinMask));
+    for(const side of ['left','right']){
+      const flip=side==='left'?p=>p:mirror,elbow=RIG[side+'Elbow'],knee=RIG[side+'Knee'];
+      bodyParts[side+'Upper']=layer(flip(upperMask),elbow,19);
+      bodyParts[side+'Lower']=layer(flip(lowerMask),elbow,19);
+      bodyParts[side+'Thigh']=layer(flip(thighMask),knee,27);
+      bodyParts[side+'Shin']=layer(flip(shinMask),knee,27);
+      bodyParts[side+'ElbowCap']=jointCap(elbow,19,19);
+      bodyParts[side+'KneeCap']=jointCap(knee,27,29);
+      bodyParts[side+'ShoulderSocket']=shoulderSocket(RIG[side+'Shoulder']);
+    }
   }
   function rotate(p,pivot,angle){const x=p.x-pivot.x,y=p.y-pivot.y,c=Math.cos(angle),s=Math.sin(angle);return{x:pivot.x+x*c-y*s,y:pivot.y+x*s+y*c};}
   function rootAngle(){return state.tilt*.12+Math.sin(state.clock*.9)*.013+state.recoil*.035;}
@@ -179,10 +205,10 @@
     line({x:470,y:209},deform(RIG.leftKnee),'#91bce46b',.7);ctx.restore();
     ctx.save();ctx.translate(state.x,state.y);ctx.scale(CONFIG.puppetSize*state.depth/1000,CONFIG.puppetSize*state.depth/1000);ctx.rotate(rootAngle());ctx.translate(-500,-500);
     for(const side of ['left','right']){
-      const left=side==='left',a=legAngles(side);ctx.save();pivot(left?RIG.leftHip:RIG.rightHip,a.hip);ctx.save();pivot(left?RIG.leftKnee:RIG.rightKnee,a.knee);ctx.drawImage(bodyParts[side+'Shin'],0,0);ctx.restore();ctx.drawImage(bodyParts[side+'Thigh'],0,0);ctx.restore();
+      const left=side==='left',a=legAngles(side);ctx.save();pivot(left?RIG.leftHip:RIG.rightHip,a.hip);ctx.drawImage(bodyParts[side+'KneeCap'],0,0);ctx.save();pivot(left?RIG.leftKnee:RIG.rightKnee,a.knee);ctx.drawImage(bodyParts[side+'Shin'],0,0);ctx.restore();ctx.drawImage(bodyParts[side+'Thigh'],0,0);ctx.drawImage(bodyParts[side+'KneeCap'],0,0);ctx.restore();
     }
     for(const side of ['left','right']){
-      const left=side==='left',a=armAngles(side);ctx.save();pivot(left?RIG.leftShoulder:RIG.rightShoulder,a.shoulder);ctx.save();pivot(left?RIG.leftElbow:RIG.rightElbow,a.elbow);ctx.drawImage(bodyParts[side+'Lower'],0,0);ctx.restore();ctx.drawImage(bodyParts[side+'Upper'],0,0);ctx.restore();
+      const left=side==='left',a=armAngles(side);ctx.drawImage(bodyParts[side+'ShoulderSocket'],0,0);ctx.save();pivot(left?RIG.leftShoulder:RIG.rightShoulder,a.shoulder);ctx.drawImage(bodyParts[side+'ElbowCap'],0,0);ctx.save();pivot(left?RIG.leftElbow:RIG.rightElbow,a.elbow);ctx.drawImage(bodyParts[side+'Lower'],0,0);ctx.restore();ctx.drawImage(bodyParts[side+'Upper'],0,0);ctx.drawImage(bodyParts[side+'ElbowCap'],0,0);ctx.restore();
     }
     ctx.drawImage(bodyParts.torso,0,0);ctx.restore();
   }
@@ -244,6 +270,13 @@
   }
   function drawMagic(dt){
     const left=deform(RIG.leftHand),right=deform(RIG.rightHand),t=state.clock,q=state.charge;
+    if(q<=.01&&!state.charging&&state.spell==='idle'){
+      // 参考图中的待机银丝；蓄力时由下面的真实蓄力特效接管。
+      for(const [hand,side] of [[left,-1],[right,1]]){
+        textureOrb(silverOrb,hand.x,hand.y,34*state.depth,t,.16,side,1.2);
+        orbitLines(hand.x,hand.y,31*state.depth,t*side,.42);
+      }
+    }
     if(q>.01||state.charging){
       const power=Math.max(.08,q),r=(18+power*31)*state.depth,blue=clamp((power-.52)/.42,0,1);
       ctx.save();ctx.globalAlpha=1-blue;textureOrb(silverOrb,left.x,left.y,r,t,power,-1,1.35);textureOrb(silverOrb,right.x,right.y,r,-t,power,1,1.35);ctx.restore();
@@ -278,7 +311,7 @@
     if(done.every(Boolean)&&!winAnnounced){winAnnounced=true;message('三段仪式已完成。她仍牵在线上，却开始跳自己的舞。',12000);playSound('win');}
   }
   function reset(){
-    state.progress={flags:[false,false,false,false,false,false],casts:0};winAnnounced=false;state.x=state.tx=W*.5;state.y=state.ty=535;state.depth=state.targetDepth=1;state.targetTilt=state.tilt=0;state.armL=state.armR=state.targetArmL=state.targetArmR=0;state.charge=0;state.charging=false;state.spell='idle';state.keys.clear();state.pointerHeld=false;state.fistLatched=false;state.candidate=state.handGesture='none';state.lastFire=-10;projectiles.length=particles.length=waves.length=0;calibrate(false);saveProgress();message('线重新绷紧。今夜的排演，从你开始。');
+    state.progress={flags:[false,false,false,false,false,false],casts:0};winAnnounced=false;state.x=state.tx=W*.5;state.y=state.ty=527;state.depth=state.targetDepth=1;state.targetTilt=state.tilt=0;state.armL=state.armR=state.targetArmL=state.targetArmR=0;state.charge=0;state.charging=false;state.spell='idle';state.keys.clear();state.pointerHeld=false;state.fistLatched=false;state.candidate=state.handGesture='none';state.lastFire=-10;projectiles.length=particles.length=waves.length=0;calibrate(false);saveProgress();message('线重新绷紧。今夜的排演，从你开始。');
   }
   function pointerPosition(event){const box=canvas.getBoundingClientRect();const b=state.bounds;return{x:(event.clientX-box.left-b.ox)/b.scale,y:(event.clientY-box.top-b.oy)/b.scale};}
   function movePointer(event){if(state.mode==='camera'||$('guide').open)return;const p=pointerPosition(event);state.tx=clamp(p.x,350,1320);state.ty=clamp(p.y,380,690);state.aim=p;if(Math.abs(state.tx-W*.5)>65||Math.abs(state.ty-535)>50)mark(0);}

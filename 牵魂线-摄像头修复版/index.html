@@ -7,31 +7,38 @@
   <meta name="description" content="在蓝雾中牵动布偶，蓄起魔法，寻找控制与被控制的边界。">
   <title>牵魂线 · 雾中的操偶者</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="reference-ui.css?v=4">
 </head>
 <body>
   <main id="theatre" class="theatre">
     <canvas id="scene" tabindex="0" aria-label="蓝雾布偶场景。移动鼠标控制布偶，Q和E抬起两臂，A和D扭曲四肢，滚轮控制远近，按住空格蓄力、松开投掷。"></canvas>
     <div class="vignette" aria-hidden="true"></div>
+    <svg width="0" height="0" aria-hidden="true" style="position:absolute"><defs><filter id="reference-ink" color-interpolation-filters="sRGB"><feColorMatrix type="luminanceToAlpha"/><feComponentTransfer result="component"><feFuncA type="linear" slope="1.8" intercept="-.28"/></feComponentTransfer><feFlood flood-color="#edf3ff"/><feComposite in2="SourceAlpha" operator="in" result="white"/><feComposite in="white" in2="component" operator="in"/></filter></defs></svg>
+    <div id="referenceHud">
     <header class="topbar">
-      <div class="identity"><span class="emblem" aria-hidden="true">✧</span><div><h1>牵魂线</h1><p>THE STRINGKEEPER <span>／ 雾中的操偶者</span></p></div></div>
-      <nav aria-label="剧场工具"><button id="guideButton">玩法手记 <span>↗</span></button><button id="soundButton" aria-pressed="false" title="开启或关闭声音">♪ <span>声音关闭</span></button><button id="fullscreenButton" aria-label="切换全屏">⛶</button></nav>
+      <div class="identity"><span class="emblem" aria-hidden="true"><svg viewBox="0 0 100 100"><path d="M50 2C50 35 35 50 2 50C35 50 50 65 50 98C50 65 65 50 98 50C65 50 50 35 50 2Z"/><path d="M50 24L65 50 50 76 35 50Z"/><path d="M50 0V100M0 50H100"/><circle cx="50" cy="50" r="5"/></svg></span><div><h1>牵魂线</h1><p>THE STRINGKEEPER <span>／ 雾中的操偶者</span></p></div></div>
+      <nav aria-label="剧场工具"><button id="languageButton" data-no-i18n aria-label="Switch to English" title="Switch to English">EN</button><button id="guideButton" aria-label="玩法手记" title="玩法手记"><span class="help-symbol">?</span></button><button id="soundButton" aria-pressed="false" title="开启或关闭声音"><span>声音关闭</span></button><button id="fullscreenButton" aria-label="切换全屏">⛶</button></nav>
     </header>
     <section class="status-line" aria-label="识别状态"><span class="mode"><i id="statusDot"></i><span id="modeLabel">鼠标排演</span></span><div id="tracking" hidden><span id="leftStatus">右手 —</span><span id="rightStatus">左手 —</span><span id="faceStatus">头部 —</span></div><span id="fpsLabel" class="quiet">INTERACTIVE STUDY · 02</span></section>
     <aside class="chapter"><span class="eyebrow">THE THREADS BEYOND</span><p>你牵动它。<br>又是谁，<em>牵动你？</em></p><span class="fine-line"></span></aside>
-    <section class="ritual" aria-label="今夜的仪式"><p class="eyebrow">今夜的仪式 <button id="resetButton" title="清空进度并重新排演">↺</button></p><ol><li id="quest0"><span>Ⅰ</span><div>牵动布偶<small>移动 · 分别抬起双臂</small></div><b>○</b></li><li id="quest1"><span>Ⅱ</span><div>唤醒魔法<small>蓄力投掷 <span id="castCount">0 / 3</span></small></div><b>○</b></li><li id="quest2"><span>Ⅲ</span><div>挣脱心结<small>转掌远近 · 歪头扭曲</small></div><b>○</b></li></ol></section>
-    <div class="charge-readout" id="chargeReadout"><span id="spellLabel">等待一缕魔法</span><div class="charge-track"><i id="chargeBar"></i></div></div>
+    <section class="ritual" aria-label="今夜的仪式"><p class="eyebrow">今夜的仪式 <button id="resetButton" title="清空进度并重新排演">↺</button></p><ol><li id="quest0"><span>Ⅰ</span><div>牵引<small>移动 · 分别抬起双臂</small></div><b>○</b></li><li id="quest1"><span>Ⅱ</span><div>唤醒<small>蓄力投掷 <span id="castCount">0 / 3</span></small></div><b>○</b></li><li id="quest2"><span>Ⅲ</span><div>挣脱<small>转掌远近 · 歪头扭曲</small></div><b>○</b></li></ol></section>
+    <div class="charge-readout" id="chargeReadout"><span id="spellLabel">等待一缕魔法</span><span id="chargePercent">00%</span><span id="chargeHint" class="charge-hint" hidden></span><div class="charge-track"><i id="chargeBar"></i></div></div>
     <div class="message" role="status" aria-live="polite"><span id="message">它在蓝雾中，等你牵起第一根线。</span></div>
     <footer class="bottom-panel">
-      <div class="control-bar"><button id="cameraButton" class="primary"><span class="camera-symbol">◎</span><span id="cameraText">开启体感</span><span>↗</span></button><button id="settingsButton" class="settings-toggle" aria-expanded="false" aria-controls="settings">调校</button><div class="divider"></div><p id="inputHint">移动鼠标牵线 <span>·</span> 按住蓄力，松开投掷</p><button id="hideUiButton" title="隐藏界面，按 H 恢复">沉浸 <span>H</span></button></div>
+      <div class="control-bar"><span class="camera-frame"><button id="cameraButton" class="primary"><span class="camera-symbol">✧</span><span id="cameraText">开启体感</span><span>✧</span></button><svg class="camera-ornament" viewBox="0 0 292 68" aria-hidden="true"><path d="M27 4 H265 L276 16 L289 34 L276 52 L265 64 H27 L16 52 L3 34 L16 16 Z"/><path d="M31 8 H261 L272 20 L283 34 L272 48 L261 60 H31 L20 48 L9 34 L20 20 Z"/><path d="M0 34 H27 M265 34 H292 M25 24 L35 34 L25 44 L15 34 Z M267 24 L277 34 L267 44 L257 34 Z"/></svg></span><button id="settingsButton" class="settings-toggle" aria-expanded="false" aria-controls="settings">调校</button><div class="divider"></div><button id="mouseModeButton" title="鼠标排演：移动牵线，按住蓄力，松开投掷">鼠标排演 <span>›</span></button><p id="inputHint">移动鼠标牵线 <span>·</span> 按住蓄力，松开投掷</p><button id="hideUiButton" title="隐藏界面，按 H 恢复">沉浸 <span>H</span></button></div>
       <p class="shortcut-line" id="shortcutLine"><kbd>Q</kbd><kbd>E</kbd> 分别抬臂 <i>·</i> <kbd>A</kbd><kbd>D</kbd> 歪头扭曲 <i>·</i> 滚轮 / <kbd>[</kbd><kbd>]</kbd> 远近 <i>·</i> <kbd>空格</kbd> 蓄力投掷</p>
     </footer>
+    </div>
     <div class="loading" id="loading"><span class="loading-glyph">✧</span><p id="loadingText">正在唤醒雾中的剧场…</p></div>
     <div class="error-banner" id="errorBanner" role="alert" hidden><p id="errorText"></p><button id="dismissError" aria-label="关闭提示">×</button></div>
     <button id="showUiButton" class="show-ui" hidden>显示界面 · H</button>
     <section class="settings" id="settings" hidden aria-label="交互调校"><div class="settings-title"><h2>牵线调校</h2><button id="closeSettings" aria-label="关闭调校">×</button></div><label>牵线灵敏度 <output id="sensitivityValue">1.0</output><input id="sensitivity" type="range" min="0.5" max="1.8" step="0.1" value="1"></label><label>爆散强度 <output id="intensityValue">70%</output><input id="intensity" type="range" min="0.2" max="1" step="0.1" value="0.7"></label><label class="check"><input id="gentle" type="checkbox"> 柔和模式（减弱闪光与震动）</label><label class="check"><input id="swapHands" type="checkbox"> 交换左右手识别</label><button class="secondary" id="calibrateButton">重新校准头部与转掌</button><p>身体坐正，双手完整入镜。校准后张开左手，顺时针转掌靠近，逆时针转掌远离。布偶的左右以画面为准。</p><p class="privacy">摄像头影像仅在本机识别，不显示、不录制、不上传。</p></section>
-    <dialog id="guide"><button id="closeGuide" class="dialog-close" aria-label="关闭玩法手记">×</button><p class="eyebrow">HOW TO HOLD A SOUL</p><h2>先牵起它，再唤醒魔法。</h2><p class="guide-lead">浓雾里的人牵着布偶，更深处的线又牵着他。你可以自由排演，也可以完成三段小仪式。</p><div class="guide-grid"><section><h3>右手 · 牵线</h3><p>移动右手掌心，带动布偶上下左右移动。弯曲大拇指，抬起布偶画面左臂；弯曲小拇指，抬起画面右臂。伸直对应手指，手臂放下。</p></section><section><h3>左手 · 施法与远近</h3><p>张开手掌并在画面内转动：顺时针靠近，逆时针远离。手指弯到半握、像捧球一样，开始蓄力；再握紧拳头，法球飞向屏幕并爆散。保持拳头不会连发。</p></section><section><h3>头部 · 扭曲</h3><p>向肩膀侧歪头，木偶四肢会连带扭转。摆正头部，关节缓缓恢复。点击“调校”可重新设置中立姿态。</p></section><section><h3>鼠标 · 自由排演</h3><p>移动鼠标牵线，按住鼠标或空格蓄力，松开投掷。Q / E 分别抬起两臂，A / D 模拟歪头，滚轮或 [ / ] 控制远近。手机可在舞台拖动并长按蓄力。</p></section></div><p class="guide-note">用浏览器打开本地网页，开启体感并允许摄像头。首次加载识别组件可能需要片刻。没有摄像头时也能完整游玩；画面里始终不会出现摄像头窗口。</p><button class="primary" id="startButton">进入雾中 <span>↗</span></button></dialog>
+    <dialog id="guide"><button id="closeGuide" class="dialog-close" aria-label="关闭玩法手记">×</button><p class="eyebrow">HOW TO HOLD A SOUL</p><h2>先牵起它，再唤醒魔法。</h2><p class="guide-lead">浓雾里的人牵着布偶，更深处的线又牵着他。你可以自由排演，也可以完成三段小仪式。</p><div class="guide-grid"><section><h3>右手 · 牵线</h3><p>移动右手掌心，带动布偶上下左右移动。弯曲大拇指，抬起布偶画面左臂；弯曲小拇指，抬起画面右臂。伸直对应手指，手臂放下。</p></section><section><h3>左手 · 施法与远近</h3><p>张开手掌并在画面内转动：顺时针靠近，逆时针远离。手指弯到半握、像捧球一样，开始蓄力；再握紧拳头，法球飞向屏幕并爆散。保持拳头不会连发。</p></section><section><h3>头部 · 扭曲</h3><p>向肩膀侧歪头，木偶四肢会连带扭转。摆正头部，关节缓缓恢复。点击“调校”可重新设置中立姿态。</p></section><section><h3>鼠标 · 自由排演</h3><p>移动鼠标牵线，按住鼠标或空格蓄力，松开投掷。Q / E 分别抬起两臂，A / D 模拟歪头，滚轮或 [ / ] 控制远近。手机可在舞台拖动并长按蓄力。</p></section></div><p class="guide-note">用浏览器打开本地网页，开启体感并允许摄像头。首次加载识别组件可能需要片刻。没有摄像头时也能完整游玩；画面里始终不会出现摄像头窗口。</p><button class="primary" id="startButton">进入雾中 <span>↗</span></button><div class="guide-tools"><button id="referenceSettings">牵线调校</button><button id="referenceReset">重新排演</button><button id="referenceImmersive">沉浸模式 · H</button></div></dialog>
     <video id="cameraVideo" autoplay playsinline muted aria-hidden="true"></video>
   </main>
-  <script src="script.js?v=2.1-camera-fix" defer></script>
+  <script src="i18n.js?v=4" defer></script>
+  <script src="script.js?v=4-sleeve-joints" defer></script>
+  <script src="reference-ui.js?v=4" defer></script>
 </body>
 </html>
+

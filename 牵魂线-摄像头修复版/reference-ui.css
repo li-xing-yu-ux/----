@@ -1,0 +1,85 @@
+:root{--ivory:#e8e8e7;--serif:"STSong","SimSun","Songti SC",serif}
+.theatre{min-height:540px}
+#referenceHud{position:absolute;left:50%;top:50%;width:1672px;height:940px;transform:translate(-50%,-50%) scale(var(--hud-scale,1));transform-origin:center;pointer-events:none}
+#referenceHud button{pointer-events:auto}
+.sr-only{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important}
+.topbar{inset:0;display:block;pointer-events:none}
+.identity{position:absolute;left:45px;top:43px;width:398px;height:93px;display:block;background:url("assets/reference-ui-source.png") -45px -43px / 1672px 940px no-repeat;filter:url(#reference-ink)}
+.identity>*{opacity:0}.identity:before,.identity:after{content:none}
+nav{position:absolute;left:1401px;top:57px;display:flex;align-items:center;gap:40px;padding:0}
+nav button{position:relative;width:34px;height:35px;padding:0;color:#e5edf9;background:none!important}
+nav button:before{content:"";position:absolute;inset:0;background-image:url("assets/reference-ui-source.png");background-size:1672px 940px;background-repeat:no-repeat;filter:url(#reference-ink);pointer-events:none}
+#guideButton:before{background-position:-1402px -57px}
+#soundButton{margin-left:2px}#soundButton:before{background-position:-1480px -57px}
+#soundButton.sound-off:after{content:"";position:absolute;width:29px;height:1px;left:2px;top:18px;background:#e8eff8;transform:rotate(-45deg)}
+#fullscreenButton{margin-left:22px}#fullscreenButton:before{background-position:-1577px -57px}
+#fullscreenButton:after{content:"";position:absolute;left:-31px;top:5px;width:1px;height:28px;background:#d4dbe6}
+nav button:hover{filter:drop-shadow(0 0 6px #c7eaff)}
+nav button>span,nav button>svg{opacity:0}
+.chapter,.ritual>.eyebrow,.ritual li small,.ritual li>b,.ritual li>span,.quiet,.message,#spellLabel,.settings-toggle,#hideUiButton,#inputHint{display:none!important}
+.ritual{position:absolute;left:1506px;right:auto;top:279px;width:112px;height:332px;min-height:0}
+.ritual ol{position:relative;width:100%;height:100%;margin:0;padding:0;list-style:none;display:block}
+.ritual ol:before{content:"";position:absolute;left:23px;top:0;width:1px;height:332px;background:linear-gradient(#c4d5e68a,#d8e5f4 12%,#d8e5f4 85%,#b4c3d688)}
+.ritual li{position:absolute;left:0;width:112px;height:60px;display:block;margin:0;padding:0;opacity:.9}
+.ritual li:nth-child(1){top:28px}.ritual li:nth-child(2){top:131px}.ritual li:nth-child(3){top:226px}
+.ritual li>div{opacity:0}
+.ritual li:before{content:"";position:absolute;inset:0;background-image:url("assets/reference-ui-source.png");background-size:1672px 940px;background-repeat:no-repeat;filter:url(#reference-ink)}
+.ritual li:nth-child(1):before{background-position:-1506px -307px}
+.ritual li:nth-child(2):before{background-position:-1506px -410px}
+.ritual li:nth-child(3):before{background-position:-1506px -505px}
+.ritual li.active{opacity:1;filter:drop-shadow(0 0 6px #87d7ff) drop-shadow(0 0 14px #5fbaff)}
+.ritual li:after{content:"";position:absolute;left:20px;top:-3px;width:6px;height:6px;border:1px solid #d5e5f5;transform:rotate(45deg)}
+.bottom-panel{left:554px;top:793px;bottom:auto;transform:none;width:510px;max-width:none;height:117px;text-align:left}
+.control-bar{position:relative;height:71px;display:flex;align-items:center;gap:0;background:none;border:0;box-shadow:none;backdrop-filter:none;padding:0;border-radius:0}
+.camera-frame{position:relative;display:block;flex:none;width:330px;height:71px;filter:none}
+#cameraButton{position:absolute;inset:0;width:330px;height:71px;min-width:0;padding:0;border:0;border-radius:0;box-shadow:none;background:url("assets/reference-ui-source.png") -554px -793px / 1672px 940px no-repeat;color:#111927;display:block;clip-path:polygon(0 49%,7% 47%,10% 43%,12% 45%,15% 24%,19% 11%,24% 3%,84% 3%,90% 10%,94% 30%,98% 49%,94% 68%,90% 89%,84% 97%,24% 97%,19% 90%,15% 75%,12% 53%,10% 56%,7% 52%,0 51%);transition:filter .16s}
+#cameraButton:hover{filter:brightness(1.08);background-color:transparent}
+#cameraButton:active{filter:brightness(.92)}
+#cameraButton:focus-visible{outline:0;filter:drop-shadow(0 0 6px #b8e6ff)}
+#cameraButton:before,#cameraButton:after,.camera-ornament,#cameraButton .camera-symbol,#cameraButton>span:last-child{display:none}
+#cameraText{position:absolute;left:119px;top:19px;width:122px;height:33px;display:flex;align-items:center;justify-content:center;opacity:0;white-space:nowrap;letter-spacing:3px;font:26px var(--serif)}
+#cameraButton[data-live-label="true"] #cameraText{opacity:1;background:linear-gradient(110deg,#e4e0d8,#eeeae2 55%,#e6e2da);border-radius:3px}
+.divider{position:absolute;left:350px;top:22px;width:1px;height:28px;background:#e4e7ee}
+#mouseModeButton{position:absolute;left:379px;top:20px;width:128px;height:33px;padding:0;background:url("assets/reference-ui-source.png") -933px -813px / 1672px 940px no-repeat;color:transparent;font:20px var(--serif)}
+#mouseModeButton{filter:url(#reference-ink)}#mouseModeButton span{opacity:0}#mouseModeButton:hover{filter:url(#reference-ink) brightness(1.3)}
+.shortcut-line{position:absolute;left:0;top:85px;margin:0;width:510px;height:30px;font-size:0;background:url("assets/reference-ui-source.png") -554px -878px / 1672px 940px no-repeat;filter:url(#reference-ink)}
+.shortcut-line>*{display:none}.shortcut-line:after{content:none}
+.status-line{left:65px;right:auto;top:855px;bottom:auto;display:flex;align-items:center;gap:10px;max-width:430px;flex-wrap:wrap;font:18px var(--serif);letter-spacing:2px;color:#e0e8f4}
+.mode{gap:17px}.mode i{width:16px;height:16px;background:#d9e6fa;box-shadow:0 0 0 4px #adc8f010,0 0 15px #b8d8ff66}
+#tracking{font-size:10px;gap:8px}
+.charge-readout{--charge:0%;--charge-glow:0;left:1499px;right:auto;top:812px;bottom:auto;transform:none;width:78px;height:78px;min-width:0;border:1px solid #d4dfef;border-radius:50%;display:grid;place-items:center;overflow:visible;background:radial-gradient(closest-side,#081324 88%,transparent 91%),conic-gradient(from -90deg,#c8f3ff 0 var(--charge),#14253d var(--charge) 100%);box-shadow:0 0 0 3px #091222,0 0 0 4px #d4dfef,0 0 calc(22px * var(--charge-glow)) #7bd7ff}
+#chargePercent{font:23px Arial,sans-serif;font-weight:400;letter-spacing:0;color:#f3f5fa}
+.charge-readout.charging #chargePercent{text-shadow:0 0 9px #9ce5ff}
+.charge-readout:before,.charge-readout:after{content:"";position:absolute;top:23px;height:31px;background-image:url("assets/reference-ui-source.png");background-size:1672px 940px;filter:url(#reference-ink)}
+.charge-readout:before{left:-93px;width:80px;background-position:-1406px -835px}
+.charge-readout:after{left:89px;width:58px;background-position:-1588px -835px}
+.charge-track{position:absolute;opacity:0;width:0;height:0;margin:0}
+.charge-hint{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);width:150px;margin-bottom:12px;font:12px var(--serif);letter-spacing:2px;color:#d2dfec;white-space:nowrap}
+.settings{bottom:150px}.guide-tools{display:flex;gap:12px;margin-top:24px;flex-wrap:wrap}.guide-tools button{padding:9px 15px;border:1px solid #a7c3dc55}
+.error-banner{top:145px}.immersive #referenceHud{display:none}
+@media(max-width:650px){#referenceHud{width:1672px;height:940px}.theatre{min-height:540px}.settings{bottom:115px}.error-banner{top:95px}}
+
+/* Language switching keeps the Chinese reference artwork intact. */
+#languageButton{position:absolute;left:-77px;top:1px;width:47px;height:32px;border:1px solid #d4e1ef80;border-radius:3px;font:14px Georgia,serif;letter-spacing:1px;background:#07142866!important}
+#languageButton:before{display:none}
+#cameraText{left:116px;top:18px;width:132px;height:35px;letter-spacing:2px}
+#cameraButton[data-long-label="true"] #cameraText{font-size:12px;white-space:normal;line-height:1.3}
+html[lang=en] #cameraText{font:18px Georgia,serif;letter-spacing:.5px}
+html[lang=en] .identity{background:none;filter:none}
+html[lang=en] .identity>div{opacity:1;position:absolute;left:116px;top:21px;width:300px}
+html[lang=en] .identity h1{font:24px Georgia,serif;letter-spacing:1.5px;margin:0 0 16px;white-space:nowrap}
+html[lang=en] .identity p{font-size:0}
+html[lang=en] .identity p:after{content:"A THEATRE OF STRINGS";font:10px Georgia,serif;letter-spacing:3px}
+html[lang=en] .identity .emblem{opacity:1;position:absolute;left:0;top:0;width:109px;height:93px;background:url("assets/reference-ui-source.png") -45px -43px / 1672px 940px no-repeat;filter:url(#reference-ink)}
+html[lang=en] .emblem svg{opacity:0}
+html[lang=en] .ritual li:before{width:47px}
+html[lang=en] .ritual li>div{opacity:1;position:absolute;left:57px;top:17px;white-space:nowrap;font:17px Georgia,serif;color:#e3eaf5}
+html[lang=en] #mouseModeButton{background:none;filter:none;color:#e2e9f4;width:153px;font:18px Georgia,serif;text-align:left}
+html[lang=en] #mouseModeButton span{opacity:1;font-size:26px;margin-left:14px}
+html[lang=en] .shortcut-line{background:none;filter:none;width:510px}
+html[lang=en] .shortcut-line:after{content:"RIGHT HAND · STRINGS    /    LEFT HAND · MAGIC";display:block;font:13px/30px Georgia,serif;letter-spacing:1.3px;text-align:center;color:#dce8f6}
+html[lang=en] .status-line{font:16px Georgia,serif;letter-spacing:.5px;max-width:530px}
+html[lang=en] #tracking{font:10px Georgia,serif}
+html[lang=en] .guide-grid{gap:5px 24px}
+html[lang=en] .guide-grid h3{font-size:16px}
+html[lang=en] #guide h2{font:26px/1.5 Georgia,serif;letter-spacing:0}
