@@ -9,11 +9,11 @@
 (() => {
   const CONFIG = {
     width: 1672, height: 940, puppetSize: 462,
-    moveSmooth: 9, jointSmooth: 12, chargeSeconds: 1.7,
+    moveSmooth: 9, jointSmooth: 12, armSmooth: 18, legSwing: .035, legBend: .12, chargeSeconds: 1.7,
     fireCooldown: .85, gestureStableMs: 170, minimumCharge: .16,
     openThreshold: .79, fistThreshold: .24,
     depthMin: .68, depthMax: 1.43, twistLimit: .65,
-    inferenceInterval: 90, lostTimeout: 450
+    inferenceInterval: 60, lostTimeout: 450
   };
   const $ = id => document.getElementById(id);
   const canvas = $('scene'), ctx = canvas.getContext('2d', {alpha:false});
@@ -28,7 +28,7 @@
   const validSaved=saved&&Array.isArray(saved.flags)&&saved.flags.length===6&&saved.flags.every(v=>typeof v==='boolean')&&Number.isInteger(saved.casts)&&saved.casts>=0&&saved.casts<=3;
   const state={
     x:W*.5,y:527,tx:W*.5,ty:527,depth:1,targetDepth:1,
-    armL:0,armR:0,targetArmL:0,targetArmR:0,tilt:0,targetTilt:0,
+    armL:0,armR:0,targetArmL:0,targetArmR:0,legL:0,legR:0,targetLegL:0,targetLegR:0,tilt:0,targetTilt:0,
     charge:0,charging:false,spell:'idle',lastFire:-10,clock:0,recoil:0,
     mode:'mouse',phase:'off',handGesture:'none',candidate:'none',candidateAt:0,
     rollPrev:null,headNeutral:null,headSamples:[],faceTilt:0,
@@ -59,17 +59,95 @@
     const reach=dist(points[tip],points[mcp])/(dist(points[pip],points[mcp])+dist(points[tip],points[pip])||1);
     return clamp(angleScore*.75+clamp((reach-.45)/.5,0,1)*.25,0,1);
   }
-  function analyzeHand(points){
-    const fingers=[[5,6,8],[9,10,12],[13,14,16],[17,18,20]].map(ids=>extension(points,...ids));
-    const palm=dist(points[0],points[9])||.1;
-    const thumbStraight=extension(points,1,3,4);
-    const thumbSpread=clamp((dist(points[4],points[5])/palm-.28)/.65,0,1);
-    const openness=fingers.reduce((s,n)=>s+n,0)/4;
+  function validPoints(points){return Array.isArray(points)&&points.length===21&&points.every(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&Number.isFinite(p.z??0));}
+  function bendCurve(value,start,end){const u=clamp((value-start)/(end-start),0,1);return u*u*(3-2*u);}
+  function analyzeHand(points,worldPoints=null,aspect=1.6){
+    // 世界坐标的三轴使用同一单位；后备坐标按画面宽高比还原，避免转掌改变弯曲程度。
+    const geometry=validPoints(worldPoints)?worldPoints:points.map(p=>({x:p.x,y:p.y/aspect,z:p.z||0}));
+    const flex=(a,b,c)=>Math.PI-jointAngle(geometry[a],geometry[b],geometry[c]);
+    const palm=dist(geometry[0],geometry[9])||.1,width=dist(geometry[5],geometry[17])||palm;
+    const curls=[[5,6,7,8],[9,10,11,12],[13,14,15,16],[17,18,19,20]].map(([m,p,d,t])=>{
+      const pip=flex(m,p,d),dip=flex(p,d,t),mcp=flex(0,m,p);
+      const length=dist(geometry[m],geometry[p])+dist(geometry[p],geometry[d])+dist(geometry[d],geometry[t]);
+      const compression=1-dist(geometry[m],geometry[t])/(length||1);
+      return clamp(Math.max((pip+.45*dip-.22)/1.75,(mcp-.8)/1.55,(compression-.07)/.60),0,1);
+    });
+    // 大拇指分别测 MCP / IP，兼顾向掌心收拢；不再把自然并拢当作弯指。
+    // 录屏对照发现世界坐标会把伸直的拇指估成弯曲；拇指改用宽高比校正的影像坐标及相对深度。
+    const thumbGeometry=points.map(p=>({x:p.x,y:p.y/aspect,z:p.z||0}));
+    const thumbFlex=(a,b,c)=>Math.PI-jointAngle(thumbGeometry[a],thumbGeometry[b],thumbGeometry[c]);
+    const thumbJoints=clamp((.65*thumbFlex(1,2,3)+.55*thumbFlex(2,3,4)-.12)/.95,0,1);
+    const thumbLength=dist(thumbGeometry[1],thumbGeometry[2])+dist(thumbGeometry[2],thumbGeometry[3])+dist(thumbGeometry[3],thumbGeometry[4]);
+    const thumbWidth=dist(thumbGeometry[5],thumbGeometry[17])||palm;
+    const palmFold=clamp((.8-dist(thumbGeometry[4],thumbGeometry[5])/(thumbLength||palm))/.65,0,1);
+    // 从拇指根部向掌心折也算弯指，不要求指尖先到小指根部。
+    const baseFold=clamp((thumbFlex(0,1,2)-.55)/1.15,0,1)*(.45+palmFold*.55);
+    const opposition=clamp((1.15-dist(thumbGeometry[4],thumbGeometry[17])/thumbWidth)/.8,0,1);
+    const thumbCurl=Math.max(thumbJoints,baseFold,opposition*.85);
+    const fingers=curls.map(c=>1-c),openness=fingers.reduce((s,n)=>s+n,0)/4;
     const gesture=openness>CONFIG.openThreshold?'open':openness<CONFIG.fistThreshold?'fist':'half';
-    return {fingers,thumb:thumbStraight*thumbSpread,thumbStraight,pinky:fingers[3],openness,gesture,
-      x:1-points[9].x,y:points[9].y,
-      roll:Math.atan2(points[9].y-points[0].y,-(points[9].x-points[0].x))};
+    return {fingers,thumb:1-thumbCurl,thumbStraight:1-thumbJoints,pinky:fingers[3],openness,gesture,
+      curls:{thumb:thumbCurl,index:curls[0],middle:curls[1],ring:curls[2],pinky:curls[3]},
+      x:1-points[9].x,y:points[9].y,roll:Math.atan2((points[9].y-points[0].y)/aspect,-(points[9].x-points[0].x))};
   }
+  const fingerBindings={thumb:'targetArmL',pinky:'targetArmR',index:'targetLegL',ring:'targetLegR'};
+  const fingerProfiles={
+    thumb:{noise:.025,on:.14,off:.065,full:.46,rate:28,arm:true},
+    pinky:{noise:.04,on:.18,off:.11,full:.62,rate:25,arm:true},
+    index:{noise:.04,on:.25,off:.12,full:.78,rate:18,arm:false},
+    ring:{noise:.04,on:.25,off:.12,full:.78,rate:18,arm:false}
+  };
+  const fingerControl={ready:false,calibrated:false,samples:[],channels:{},last:0,cadence:100,position:null};
+  function resetFingerControl(){
+    fingerControl.ready=false;fingerControl.calibrated=false;fingerControl.samples=[];fingerControl.channels={};fingerControl.last=0;fingerControl.cadence=100;fingerControl.position=null;
+    Object.values(fingerBindings).forEach(key=>state[key]=0);
+  }
+  function releaseFingerControl(){
+    for(const channel of Object.values(fingerControl.channels)){channel.history=[];channel.rest=[];channel.filtered=0;channel.active=false;channel.candidate=null;channel.count=0;}
+    Object.values(fingerBindings).forEach(key=>state[key]=0);fingerControl.position=null;
+  }
+  function updateFingerControl(hand,now){
+    const names=Object.keys(fingerBindings),elapsed=fingerControl.last?Math.max(1,now-fingerControl.last):60;
+    if(fingerControl.last)fingerControl.cadence=mix(fingerControl.cadence,Math.min(elapsed,1200),.3);
+    const dt=clamp(elapsed/1000,.015,.2);fingerControl.last=now;
+    if(!fingerControl.ready){
+      for(const name of names)fingerControl.channels[name]={baseline:Math.min(hand.curls[name],name==='thumb'?.5:.12),history:[],rest:[],filtered:0,active:false,candidate:null,since:0,count:0};
+      fingerControl.ready=true;
+    }
+    if(!fingerControl.calibrated){
+      const relaxed=['index','middle','ring','pinky'].every(name=>hand.curls[name]<.25)&&hand.curls.thumb<.65;
+      if(relaxed){
+        const samples=fingerControl.samples;samples.push({time:now,...hand.curls});if(samples.length>18)samples.shift();
+        if(samples.length>=5&&now-samples[0].time>=350){
+          // 只降低中立值；可选校准不能吞掉一个正在持续的轻弯动作。
+          for(const name of names){const sorted=samples.map(s=>s[name]).sort((a,b)=>a-b);fingerControl.channels[name].baseline=Math.min(fingerControl.channels[name].baseline,sorted[Math.floor(sorted.length/2)]);}
+          fingerControl.calibrated=true;fingerControl.samples=[];
+        }
+      }else fingerControl.samples=[];
+    }
+    for(const name of names){
+      const channel=fingerControl.channels[name],profile=fingerProfiles[name],raw=hand.curls[name];
+      // 一帧异常偏直也不能永久降低基线；连续几帧更直时才更新。
+      channel.rest.push(raw);if(channel.rest.length>5)channel.rest.shift();
+      if(channel.rest.length===5){const sorted=[...channel.rest].sort((a,b)=>a-b),rest=sorted[3];if(rest<channel.baseline-.025)channel.baseline=mix(channel.baseline,rest,.65);}
+      const delta=clamp((raw-channel.baseline-profile.noise)/Math.max(.3,1-channel.baseline-profile.noise),0,1);
+      channel.history.push(delta);if(channel.history.length>3)channel.history.shift();
+      const sorted=[...channel.history].sort((a,b)=>a-b),median=sorted[Math.floor((sorted.length-1)/2)];
+      channel.filtered=smooth(channel.filtered,median,profile.rate,dt);
+      const next=channel.active?channel.filtered>profile.off:channel.filtered>profile.on;
+      if(profile.arm){
+        // 中值过滤本身已要求两帧确认；手臂不再叠加第二轮等待。
+        if(!next)channel.active=false;
+        else if(channel.history.length>=2)channel.active=true;
+      }else if(next===channel.active){channel.candidate=null;channel.count=0;}
+      else{
+        if(channel.candidate!==next){channel.candidate=next;channel.since=now;channel.count=1;}else channel.count++;
+        if(channel.count>=2&&now-channel.since>=45){channel.active=next;channel.candidate=null;channel.count=0;}
+      }
+      state[fingerBindings[name]]=channel.active?bendCurve(channel.filtered,profile.arm?.02:.08,profile.full):0;
+    }
+  }
+
   function decideGesture(gesture,now){
     if(gesture!==state.candidate){state.candidate=gesture;state.candidateAt=now;return;}
     if(now-state.candidateAt<CONFIG.gestureStableMs||state.handGesture===gesture)return;
@@ -85,11 +163,16 @@
   }
   function processTracking(result,now=performance.now()){
     if(state.mode!=='camera')return;
+    if(window.__theatreTest)window.__theatreTest.lastTracking=result;
     let left=null,right=null;
     (result.hands||[]).forEach(hand=>{
       // 推理画面已水平镜像：当前模型标签与使用者实际左右手相反，界面按实际手显示。
-      let side=hand.side.toLowerCase();if($('swapHands').checked)side=side==='left'?'right':'left';
-      const data=analyzeHand(hand.points);if(side==='left')left=data;else right=data;
+      if(!validPoints(hand.points))return;
+      const wrist=hand.points[0],middle=hand.points[9];
+      if(wrist.x<0||wrist.x>1||middle.x<.025||middle.x>.975||middle.y<.025||middle.y>.975||dist(wrist,middle)<.025)return;
+      let side=String(hand.side||'').toLowerCase();if($('swapHands').checked)side=side==='left'?'right':'left';
+      const data=analyzeHand(hand.points,hand.worldPoints,(result.videoWidth||640)/(result.videoHeight||400));
+      if(side==='left')left=data;else if(side==='right')right=data;
     });
     state.seenLeft=Boolean(left);state.seenRight=Boolean(right);
     if(left){
@@ -97,11 +180,11 @@
       // 输入已经镜像：analyzeHand 中的 1-x 在这里还原为画面坐标。
       state.tx=clamp(W*.5+((1-left.x)-.5)*W*.82*s,350,1320);
       state.ty=clamp(535+(left.y-.5)*H*.53*s,380,690);
-      const thumbBend=clamp((.82-left.thumbStraight)/.62,0,1);
-      const pinkyBend=clamp((.8-left.pinky)/.58,0,1);
-      state.targetArmL=thumbBend;state.targetArmR=pinkyBend;
+      const position={x:left.x,y:left.y};
+      if(fingerControl.position&&Math.hypot(position.x-fingerControl.position.x,position.y-fingerControl.position.y)>.28)releaseFingerControl();
+      fingerControl.position=position;updateFingerControl(left,now);
       if(Math.abs(state.tx-W*.5)>65||Math.abs(state.ty-535)>50)mark(0);
-      if(thumbBend>.7)mark(1);if(pinkyBend>.7)mark(2);
+      if(state.targetArmL>.7)mark(1);if(state.targetArmR>.7)mark(2);
     }
     if(right){
       state.lastRight=now;
@@ -135,7 +218,7 @@
   function expireTracking(now){
     if(state.mode!=='camera')return;
     if(now-state.lastRight>CONFIG.lostTimeout){state.charging=false;state.handGesture='none';state.candidate='none';state.rollPrev=null;state.seenRight=false;}
-    if(now-state.lastLeft>CONFIG.lostTimeout){state.targetArmL=0;state.targetArmR=0;state.seenLeft=false;}
+    if(now-state.lastLeft>Math.max(900,fingerControl.cadence*2.5)){releaseFingerControl();state.seenLeft=false;}
     if(now-state.lastFace>800){state.targetTilt=0;state.seenFace=false;}
   }
 
@@ -187,12 +270,12 @@
   function rotate(p,pivot,angle){const x=p.x-pivot.x,y=p.y-pivot.y,c=Math.cos(angle),s=Math.sin(angle);return{x:pivot.x+x*c-y*s,y:pivot.y+x*s+y*c};}
   function rootAngle(){return state.tilt*.12+Math.sin(state.clock*.9)*.013+state.recoil*.035;}
   function armAngles(side){const left=side==='left',lift=left?state.armL:state.armR;return {shoulder:(left?1:-1)*lift*1.05+state.tilt*(left?1.1:-.85),elbow:(left?-1:1)*(lift*.2+Math.abs(state.tilt)*.7)};}
-  function legAngles(side){const left=side==='left';return{hip:(left?-.65:.65)*state.tilt+Math.sin(state.clock*1.7)*.018,knee:(left?1:-1)*state.tilt*1.25};}
+  function legAngles(side){const left=side==='left',lift=left?state.legL:state.legR,sign=left?1:-1;return{hip:clamp((left?-.65:.65)*state.tilt+sign*lift*CONFIG.legSwing,-.6,.6)+Math.sin(state.clock*1.7)*.018,knee:clamp(sign*(state.tilt*1.25+lift*CONFIG.legBend),-1.15,1.15)};}
   function toWorld(p){const q=rotate(p,{x:500,y:500},rootAngle()),size=CONFIG.puppetSize*state.depth;return{x:state.x+(q.x-500)*size/1000,y:state.y+(q.y-500)*size/1000};}
   function deform(p){
     let q={...p};
     if(p===RIG.leftHand||p===RIG.rightHand){const left=p===RIG.leftHand,a=armAngles(left?'left':'right');q=rotate(rotate(p,left?RIG.leftElbow:RIG.rightElbow,a.elbow),left?RIG.leftShoulder:RIG.rightShoulder,a.shoulder);}
-    if(p===RIG.leftKnee||p===RIG.rightKnee){const left=p===RIG.leftKnee,a=legAngles(left?'left':'right');q=rotate(p,left?RIG.leftHip:RIG.rightHip,a.hip);}
+    if(p===RIG.leftKnee||p===RIG.rightKnee||p===RIG.leftFoot||p===RIG.rightFoot){const left=p===RIG.leftKnee||p===RIG.leftFoot,a=legAngles(left?'left':'right');if(p===RIG.leftFoot||p===RIG.rightFoot)q=rotate(q,left?RIG.leftKnee:RIG.rightKnee,a.knee);q=rotate(q,left?RIG.leftHip:RIG.rightHip,a.hip);}
     return toWorld(q);
   }
   function pivot(point,angle){ctx.translate(point.x,point.y);ctx.rotate(angle);ctx.translate(-point.x,-point.y);}
@@ -311,7 +394,7 @@
     if(done.every(Boolean)&&!winAnnounced){winAnnounced=true;message('三段仪式已完成。她仍牵在线上，却开始跳自己的舞。',12000);playSound('win');}
   }
   function reset(){
-    state.progress={flags:[false,false,false,false,false,false],casts:0};winAnnounced=false;state.x=state.tx=W*.5;state.y=state.ty=527;state.depth=state.targetDepth=1;state.targetTilt=state.tilt=0;state.armL=state.armR=state.targetArmL=state.targetArmR=0;state.charge=0;state.charging=false;state.spell='idle';state.keys.clear();state.pointerHeld=false;state.fistLatched=false;state.candidate=state.handGesture='none';state.lastFire=-10;projectiles.length=particles.length=waves.length=0;calibrate(false);saveProgress();message('线重新绷紧。今夜的排演，从你开始。');
+    state.progress={flags:[false,false,false,false,false,false],casts:0};winAnnounced=false;state.x=state.tx=W*.5;state.y=state.ty=527;state.depth=state.targetDepth=1;state.targetTilt=state.tilt=0;state.armL=state.armR=state.legL=state.legR=0;resetFingerControl();state.charge=0;state.charging=false;state.spell='idle';state.keys.clear();state.pointerHeld=false;state.fistLatched=false;state.candidate=state.handGesture='none';state.lastFire=-10;projectiles.length=particles.length=waves.length=0;calibrate(false);saveProgress();message('线重新绷紧。今夜的排演，从你开始。');
   }
   function pointerPosition(event){const box=canvas.getBoundingClientRect();const b=state.bounds;return{x:(event.clientX-box.left-b.ox)/b.scale,y:(event.clientY-box.top-b.oy)/b.scale};}
   function movePointer(event){if(state.mode==='camera'||$('guide').open)return;const p=pointerPosition(event);state.tx=clamp(p.x,350,1320);state.ty=clamp(p.y,380,690);state.aim=p;if(Math.abs(state.tx-W*.5)>65||Math.abs(state.ty-535)>50)mark(0);}
@@ -331,16 +414,17 @@
   document.addEventListener('keyup',event=>{const key=event.key.toLowerCase();state.keys.delete(key);if(key===' '&&state.mode==='mouse')stopCharge(true);});
   function keyboard(dt){if(state.mode!=='mouse')return;
     state.targetArmL=state.keys.has('q')?1:0;state.targetArmR=state.keys.has('e')?1:0;
+    state.targetLegL=state.keys.has('z')?1:0;state.targetLegR=state.keys.has('c')?1:0;
     state.targetTilt=(state.keys.has('d')?.5:0)-(state.keys.has('a')?.5:0);
     const dx=(state.keys.has('arrowright')?1:0)-(state.keys.has('arrowleft')?1:0),dy=(state.keys.has('arrowdown')?1:0)-(state.keys.has('arrowup')?1:0);
     if(dx||dy){state.tx=clamp(state.tx+dx*300*dt,350,1320);state.ty=clamp(state.ty+dy*200*dt,380,690);mark(0);}
     const z=(state.keys.has(']')?1:0)-(state.keys.has('[')?1:0);if(z){state.targetDepth=clamp(state.targetDepth+z*.5*dt,CONFIG.depthMin,CONFIG.depthMax);if(Math.abs(state.targetDepth-1)>.09)mark(3);}
   }
-  function clearInput(){state.pointerHeld=false;state.keys.clear();state.charging=false;state.candidate=state.handGesture='none';state.fistLatched=false;state.rollPrev=null;}
+  function clearInput(){resetFingerControl();state.pointerHeld=false;state.keys.clear();state.charging=false;state.candidate=state.handGesture='none';state.fistLatched=false;state.rollPrev=null;}
   window.addEventListener('blur',clearInput);
   document.addEventListener('visibilitychange',()=>{if(document.hidden){clearInput();if(state.phase!=='off')stopCamera();audio?.suspend();}else if(state.sound)audio?.resume();});
   function toggleImmersive(){state.immersive=!state.immersive;$('theatre').classList.toggle('immersive',state.immersive);$('showUiButton').hidden=!state.immersive;canvas.focus({preventScroll:true});}
-  function calibrate(notify=true){state.headNeutral=null;state.headSamples=[];state.rollPrev=null;state.targetTilt=0;state.targetDepth=1;if(notify)message('请坐正，双手放松。头部识别后会重新记住中立姿态。');}
+  function calibrate(notify=true){resetFingerControl();state.headNeutral=null;state.headSamples=[];state.rollPrev=null;state.targetTilt=0;state.targetDepth=1;if(notify)message('已重置。右手入镜即可控制；自然张掌片刻可优化手指识别。');}
   $('hideUiButton').onclick=$('showUiButton').onclick=toggleImmersive;
   $('resetButton').onclick=()=>{reset();canvas.focus({preventScroll:true});};
   $('guideButton').onclick=()=>{clearInput();$('guide').showModal();};
@@ -381,7 +465,7 @@
           const result=hands.detectForVideo(data.bitmap,data.time);
           const faceUpdated=ticks++%2===0;
           const f=faceUpdated?face.detectForVideo(data.bitmap,data.time):null;
-          self.postMessage({type:'result',hands:result.landmarks.map((points,i)=>({points,side:result.handedness[i][0].categoryName})),faceUpdated,face:f?.faceLandmarks?.[0]||null,videoWidth:data.bitmap.width,videoHeight:data.bitmap.height});
+          self.postMessage({type:'result',hands:result.landmarks.map((points,i)=>({points,worldPoints:result.worldLandmarks?.[i],side:result.handedness[i][0].categoryName,handednessScore:result.handedness[i][0].score})),faceUpdated,face:f?.faceLandmarks?.[0]||null,videoWidth:data.bitmap.width,videoHeight:data.bitmap.height});
         }catch(error){self.postMessage({type:'error',stage:'画面识别',message:String(error.message||error)});}finally{data.bitmap.close();}
       }
     };
@@ -393,7 +477,7 @@
   function recordCameraError(stage,err){const detail=String(err?.message||err||'未知错误');cameraDiagnostics.push({stage,detail});console.warn('[体感诊断]',stage,detail);return detail.replace(/\s+/g,' ').slice(0,240);}
   function cameraReady(token){
     if(token!==cameraToken)return;
-    clearTimeout(initTimer);state.phase='ready';state.mode='camera';inFlight=false;lastInference=0;calibrate(false);setCameraLabel('关闭体感');$('tracking').hidden=false;$('statusDot').classList.add('live');$('modeLabel').textContent=cameraEngine==='main'?'体感演出 · 兼容模式':'体感演出';$('inputHint').textContent='右手牵线 · 左手施法';$('shortcutLine').hidden=true;message('识别就绪。请坐正，双手完整入镜，等待头部校准。');
+    clearTimeout(initTimer);state.phase='ready';state.mode='camera';inFlight=false;lastInference=0;calibrate(false);setCameraLabel('关闭体感');$('tracking').hidden=false;$('statusDot').classList.add('live');$('modeLabel').textContent=cameraEngine==='main'?'体感演出 · 兼容模式':'体感演出';$('inputHint').textContent='右手牵线 · 左手施法';$('shortcutLine').hidden=true;message('识别就绪。右手入镜即可弯指控制四肢，左手负责施法。');
   }
   function cameraFailed(stage,err){
     const detail=recordCameraError(stage,err);stopCamera();
@@ -470,7 +554,7 @@
         const result=mainHands.detectForVideo(mirrorCanvas,now);const faceUpdated=mainTicks++%3===0;
         let faceResult=null;
         if(faceUpdated&&mainFace){try{faceResult=mainFace.detectForVideo(mirrorCanvas,now);}catch(err){const detail=recordCameraError('头部画面识别',err);closeDetector(mainFace);mainFace=null;error(`手部识别继续运行；头部识别中断：${detail}`);}}
-        processTracking({hands:result.landmarks.map((points,i)=>({points,side:result.handedness[i][0].categoryName})),faceUpdated,face:faceResult?.faceLandmarks?.[0]||null,videoWidth:640,videoHeight:400},now);inFlight=false;return;
+        processTracking({hands:result.landmarks.map((points,i)=>({points,worldPoints:result.worldLandmarks?.[i],side:result.handedness[i][0].categoryName,handednessScore:result.handedness[i][0].score})),faceUpdated,face:faceResult?.faceLandmarks?.[0]||null,videoWidth:640,videoHeight:400},now);inFlight=false;return;
       }
       const bitmap=await createImageBitmap(mirrorCanvas);
       if(token!==cameraToken||!cameraWorker){bitmap.close();inFlight=false;return;}
@@ -507,7 +591,8 @@
     if(state.charge===0&&state.spell==='charging'&&!state.charging)state.spell='idle';
     if(chargeHum&&audio)chargeHum.gain.setTargetAtTime(state.charging?state.charge*.1:0,audio.currentTime,.08);
     state.x=smooth(state.x,state.tx,CONFIG.moveSmooth,dt);state.y=smooth(state.y,state.ty+Math.sin(state.clock*1.1)*3,CONFIG.moveSmooth,dt);state.depth=smooth(state.depth,state.targetDepth,7,dt);
-    state.armL=smooth(state.armL,state.targetArmL,CONFIG.jointSmooth,dt);state.armR=smooth(state.armR,state.targetArmR,CONFIG.jointSmooth,dt);state.tilt=smooth(state.tilt,state.targetTilt,9,dt);state.recoil=Math.max(0,state.recoil-dt*3);
+    state.legL=smooth(state.legL,state.targetLegL,CONFIG.jointSmooth,dt);state.legR=smooth(state.legR,state.targetLegR,CONFIG.jointSmooth,dt);
+    state.armL=smooth(state.armL,state.targetArmL,CONFIG.armSmooth,dt);state.armR=smooth(state.armR,state.targetArmR,CONFIG.armSmooth,dt);state.tilt=smooth(state.tilt,state.targetTilt,9,dt);state.recoil=Math.max(0,state.recoil-dt*3);
     ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);ctx.fillStyle='#071222';ctx.fillRect(0,0,surfaceW,surfaceH);
     const b=state.bounds;let shakeX=0,shakeY=0;if(waves.length&&!state.gentle){shakeX=Math.sin(state.clock*97)*state.recoil*3*state.intensity;shakeY=Math.cos(state.clock*89)*state.recoil*2*state.intensity;}
     ctx.translate(b.ox+shakeX,b.oy+shakeY);ctx.scale(b.scale,b.scale);
@@ -523,7 +608,7 @@
   }
   window.addEventListener('pagehide',()=>{stopCamera();audio?.close();});
   // 测试接口仅在 ?test=1 时启用，用合成关键点和本地视频验证交互。
-  if(new URLSearchParams(location.search).has('test'))window.__theatreTest={state,analyzeHand,decideGesture,processTracking,deform,fire,reset,stopCamera,startCamera,boot,CONFIG,getCamera:()=>({worker:cameraWorker,stream:cameraStream,engine:cameraEngine,diagnostics:cameraDiagnostics}),setCameraMode:()=>{state.mode='camera';state.phase='test';},setMouseMode:()=>{state.mode='mouse';state.phase='off';}};
+  if(new URLSearchParams(location.search).has('test'))window.__theatreTest={state,analyzeHand,decideGesture,processTracking,deform,fire,reset,expireTracking,fingerControl,RIG,legAngles,stopCamera,startCamera,boot,CONFIG,getCamera:()=>({worker:cameraWorker,stream:cameraStream,engine:cameraEngine,diagnostics:cameraDiagnostics}),setCameraMode:()=>{state.mode='camera';state.phase='test';},setMouseMode:()=>{state.mode='mouse';state.phase='off';}};
 
   /* Embedded third-party components: MediaPipe Tasks Vision 0.10.18 (Google LLC), Apache License 2.0. Official models: Google MediaPipe Hand Landmarker and Face Landmarker. Source: https://github.com/google-ai-edge/mediapipe ; License: https://www.apache.org/licenses/LICENSE-2.0 . The original notices are retained inside the packed JavaScript resources. Generated scene artwork is derived from the user's approved references using OpenAI image generation. */
 /*
