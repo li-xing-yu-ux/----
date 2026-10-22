@@ -28,7 +28,9 @@
       <clipPath id="entryEyeOpening"><path d="M93 404 Q165 304 250 307 Q337 304 407 404 Q331 506 250 504 Q168 506 93 404Z"/></clipPath>
       <filter id="entryEyeHalo" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="13"/></filter>
     </defs>
-    <g class="entry-pendulum">
+    <g class="entry-eye-echo entry-eye-echo-far"><use href="#entryEyeArtwork"/></g>
+    <g class="entry-eye-echo entry-eye-echo-near"><use href="#entryEyeArtwork"/></g>
+    <g class="entry-pendulum"><g id="entryEyeArtwork">
     <g class="entry-cord" fill="none" stroke="#444c9b" stroke-width="1.8"><path d="M251-50 C246 33 258 94 250 155 S253 203 247 225"/><path d="M246-50 C242 31 253 109 245 164 S249 204 243 225" opacity=".4"/></g>
     <g class="entry-eye-talisman">
       <circle class="entry-eye-halo" cx="250" cy="404" r="168" fill="#3b40cf" opacity=".23" filter="url(#entryEyeHalo)"/>
@@ -54,7 +56,7 @@
       <path d="M94 403 Q77 401 73 395 M407 403 Q423 400 428 395 M131 327q12-9 24-11m197 12-22-12M155 487q17 13 38 17m114 0q20-6 39-18" fill="none" stroke="#040820" stroke-width="3" stroke-linecap="round"/>
       <path class="entry-closed-seam" d="M94 404 Q250 463 407 404" fill="none" stroke="#030616" stroke-width="4" stroke-linecap="round"/>
     </g>
-    </g>
+    </g></g>
   </svg>`;
 
   const root = document.createElement('section');
