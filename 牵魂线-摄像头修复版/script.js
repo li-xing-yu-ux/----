@@ -28,6 +28,7 @@
   const validSaved=saved&&Array.isArray(saved.flags)&&saved.flags.length===6&&saved.flags.every(v=>typeof v==='boolean')&&Number.isInteger(saved.casts)&&saved.casts>=0&&saved.casts<=3;
   const state={
     x:W*.5,y:527,tx:W*.5,ty:527,depth:1,targetDepth:1,
+    paused:!(new URLSearchParams(location.search).get('test')==='1'&&new URLSearchParams(location.search).get('entry')!=='1'),pausePainted:false,
     armL:0,armR:0,targetArmL:0,targetArmR:0,legL:0,legR:0,targetLegL:0,targetLegR:0,tilt:0,targetTilt:0,
     charge:0,charging:false,spell:'idle',lastFire:-10,clock:0,recoil:0,
     mode:'mouse',phase:'off',handGesture:'none',candidate:'none',candidateAt:0,
@@ -162,7 +163,7 @@
     }
   }
   function processTracking(result,now=performance.now()){
-    if(state.mode!=='camera')return;
+    if(state.mode!=='camera'||state.paused)return;
     if(window.__theatreTest)window.__theatreTest.lastTracking=result;
     let left=null,right=null;
     (result.hands||[]).forEach(hand=>{
@@ -273,6 +274,7 @@
   function legAngles(side){const left=side==='left',lift=left?state.legL:state.legR,sign=left?1:-1;return{hip:clamp((left?-.65:.65)*state.tilt+sign*lift*CONFIG.legSwing,-.6,.6)+Math.sin(state.clock*1.7)*.018,knee:clamp(sign*(state.tilt*1.25+lift*CONFIG.legBend),-1.15,1.15)};}
   function toWorld(p){const q=rotate(p,{x:500,y:500},rootAngle()),size=CONFIG.puppetSize*state.depth;return{x:state.x+(q.x-500)*size/1000,y:state.y+(q.y-500)*size/1000};}
   function deform(p){
+    if(activeCharacter==='wood')return toWorld(window.WoodCharacter.deform(p,woodenPose()));
     let q={...p};
     if(p===RIG.leftHand||p===RIG.rightHand){const left=p===RIG.leftHand,a=armAngles(left?'left':'right');q=rotate(rotate(p,left?RIG.leftElbow:RIG.rightElbow,a.elbow),left?RIG.leftShoulder:RIG.rightShoulder,a.shoulder);}
     if(p===RIG.leftKnee||p===RIG.rightKnee||p===RIG.leftFoot||p===RIG.rightFoot){const left=p===RIG.leftKnee||p===RIG.leftFoot,a=legAngles(left?'left':'right');if(p===RIG.leftFoot||p===RIG.rightFoot)q=rotate(q,left?RIG.leftKnee:RIG.rightKnee,a.knee);q=rotate(q,left?RIG.leftHip:RIG.rightHip,a.hip);}
@@ -282,11 +284,12 @@
   function drawPuppet(){
     ctx.save();ctx.translate(state.x,848);ctx.scale(1,.18);glow(0,0,100*state.depth,'#0206129a');ctx.restore();
     const anchors=[{x:510,y:192},{x:607,y:217},{x:1018,y:231},{x:1140,y:236}];
-    const attachments=[deform(RIG.leftHand),deform({x:500,y:22}),deform(RIG.rightHand),deform(RIG.rightKnee)];
-    ctx.save();ctx.strokeStyle='#97cce5b0';ctx.lineWidth=.95;
+    const attachments=[deform(RIG.leftHand),activeCharacter==='wood'?toWorld({x:RIG.head.x,y:22}):deform({x:500,y:22}),deform(RIG.rightHand),deform(RIG.rightKnee)];
+    ctx.save();ctx.strokeStyle=activeCharacter==='wood'?'#d8875baf':'#97cce5b0';ctx.lineWidth=.95;
     attachments.forEach((end,i)=>{const start=anchors[i];ctx.beginPath();ctx.moveTo(start.x,start.y);ctx.quadraticCurveTo((start.x+end.x)/2+Math.sin(state.clock+i)*2,(start.y+end.y)/2,end.x,end.y);ctx.stroke();});
     line({x:470,y:209},deform(RIG.leftKnee),'#91bce46b',.7);ctx.restore();
     ctx.save();ctx.translate(state.x,state.y);ctx.scale(CONFIG.puppetSize*state.depth/1000,CONFIG.puppetSize*state.depth/1000);ctx.rotate(rootAngle());ctx.translate(-500,-500);
+    if(activeCharacter==='wood'){window.WoodCharacter.draw(ctx,woodenPose());ctx.restore();return;}
     for(const side of ['left','right']){
       const left=side==='left',a=legAngles(side);ctx.save();pivot(left?RIG.leftHip:RIG.rightHip,a.hip);ctx.drawImage(bodyParts[side+'KneeCap'],0,0);ctx.save();pivot(left?RIG.leftKnee:RIG.rightKnee,a.knee);ctx.drawImage(bodyParts[side+'Shin'],0,0);ctx.restore();ctx.drawImage(bodyParts[side+'Thigh'],0,0);ctx.drawImage(bodyParts[side+'KneeCap'],0,0);ctx.restore();
     }
@@ -334,9 +337,10 @@
     ctx.globalAlpha=fade*readable*full*(.8+power*.2);ctx.globalCompositeOperation='source-over';ctx.drawImage(images.magicTexture,-width/2,-height/2,width,height);ctx.restore();
     return fade;
   }
-  function beginCharge(){if(state.spell==='flight')return;state.charging=true;state.spell='charging';}
+  function beginCharge(){if(state.paused||state.spell==='flight')return;state.charging=true;state.spell='charging';}
   function stopCharge(release=false){state.charging=false;if(release)fire(false);}
   function fire(allowUncharged=false){
+    if(state.paused)return;
     if(state.clock-state.lastFire<CONFIG.fireCooldown||projectiles.length)return false;
     if(state.charge<CONFIG.minimumCharge&&!allowUncharged){state.charge=0;state.spell='idle';return false;}
     const amount=Math.max(state.charge,allowUncharged ? .28 : 0),left=deform(RIG.leftHand),right=deform(RIG.rightHand);
@@ -397,14 +401,14 @@
     state.progress={flags:[false,false,false,false,false,false],casts:0};winAnnounced=false;state.x=state.tx=W*.5;state.y=state.ty=527;state.depth=state.targetDepth=1;state.targetTilt=state.tilt=0;state.armL=state.armR=state.legL=state.legR=0;resetFingerControl();state.charge=0;state.charging=false;state.spell='idle';state.keys.clear();state.pointerHeld=false;state.fistLatched=false;state.candidate=state.handGesture='none';state.lastFire=-10;projectiles.length=particles.length=waves.length=0;calibrate(false);saveProgress();message('线重新绷紧。今夜的排演，从你开始。');
   }
   function pointerPosition(event){const box=canvas.getBoundingClientRect();const b=state.bounds;return{x:(event.clientX-box.left-b.ox)/b.scale,y:(event.clientY-box.top-b.oy)/b.scale};}
-  function movePointer(event){if(state.mode==='camera'||$('guide').open)return;const p=pointerPosition(event);state.tx=clamp(p.x,350,1320);state.ty=clamp(p.y,380,690);state.aim=p;if(Math.abs(state.tx-W*.5)>65||Math.abs(state.ty-535)>50)mark(0);}
+  function movePointer(event){if(state.paused||state.mode==='camera'||$('guide').open)return;const p=pointerPosition(event);state.tx=clamp(p.x,350,1320);state.ty=clamp(p.y,380,690);state.aim=p;if(Math.abs(state.tx-W*.5)>65||Math.abs(state.ty-535)>50)mark(0);}
   canvas.addEventListener('pointermove',movePointer);
-  canvas.addEventListener('pointerdown',event=>{if(state.mode==='camera'||event.button!==0)return;canvas.focus({preventScroll:true});movePointer(event);canvas.setPointerCapture(event.pointerId);state.pointerHeld=true;dragStart=state.clock;beginCharge();});
+  canvas.addEventListener('pointerdown',event=>{if(state.paused||state.mode==='camera'||event.button!==0)return;canvas.focus({preventScroll:true});movePointer(event);canvas.setPointerCapture(event.pointerId);state.pointerHeld=true;dragStart=state.clock;beginCharge();});
   canvas.addEventListener('pointerup',()=>{if(state.pointerHeld){state.pointerHeld=false;stopCharge(true);}});
   canvas.addEventListener('pointercancel',()=>{state.pointerHeld=false;stopCharge();});
-  canvas.addEventListener('wheel',event=>{if(state.mode==='camera')return;event.preventDefault();state.targetDepth=clamp(state.targetDepth-event.deltaY*.001,CONFIG.depthMin,CONFIG.depthMax);if(Math.abs(state.targetDepth-1)>.09)mark(3);},{passive:false});
+  canvas.addEventListener('wheel',event=>{if(state.paused||state.mode==='camera')return;event.preventDefault();state.targetDepth=clamp(state.targetDepth-event.deltaY*.001,CONFIG.depthMin,CONFIG.depthMax);if(Math.abs(state.targetDepth-1)>.09)mark(3);},{passive:false});
   document.addEventListener('keydown',event=>{
-    const key=event.key.toLowerCase();if(key==='h'&&!$('guide').open&&document.activeElement?.tagName!=='INPUT'){toggleImmersive();return;}
+    const key=event.key.toLowerCase();if(state.paused)return;if(key==='h'&&!$('guide').open&&document.activeElement?.tagName!=='INPUT'){toggleImmersive();return;}
     if($('guide').open||['INPUT','BUTTON'].includes(document.activeElement?.tagName)||state.mode==='camera')return;
     if([' ','arrowup','arrowdown','arrowleft','arrowright','[',']'].includes(key))event.preventDefault();
     if(event.repeat)return;state.keys.add(key);
@@ -412,7 +416,7 @@
     if(key==='q')mark(1);if(key==='e')mark(2);if(key==='a'||key==='d')mark(4);
   });
   document.addEventListener('keyup',event=>{const key=event.key.toLowerCase();state.keys.delete(key);if(key===' '&&state.mode==='mouse')stopCharge(true);});
-  function keyboard(dt){if(state.mode!=='mouse')return;
+  function keyboard(dt){if(state.paused||state.mode!=='mouse')return;
     state.targetArmL=state.keys.has('q')?1:0;state.targetArmR=state.keys.has('e')?1:0;
     state.targetLegL=state.keys.has('z')?1:0;state.targetLegR=state.keys.has('c')?1:0;
     state.targetTilt=(state.keys.has('d')?.5:0)-(state.keys.has('a')?.5:0);
@@ -512,6 +516,7 @@
     $('tracking').hidden=true;$('statusDot').classList.remove('live');$('modeLabel').textContent='鼠标排演';setCameraLabel('开启体感');$('inputHint').innerHTML='移动鼠标牵线 <span>·</span> 按住蓄力，松开投掷';$('shortcutLine').hidden=false;
   }
   async function startCamera(){
+    if(state.paused)return;
     const token=++cameraToken;state.phase='loading';setCameraLabel('连接中 · 可取消');$('errorBanner').hidden=true;clearInput();
     try{
       if(!navigator.mediaDevices?.getUserMedia||!window.isSecureContext)throw Object.assign(new Error('需要安全页面'),{name:'InsecureContext'});
@@ -545,7 +550,7 @@
     }
   }
   async function queueInference(now){
-    if(state.phase!=='ready'||inFlight||now-lastInference<CONFIG.inferenceInterval||$('guide').open)return;
+    if(state.paused||state.phase!=='ready'||inFlight||now-lastInference<CONFIG.inferenceInterval||$('guide').open)return;
     const video=$('cameraVideo');if(video.readyState<2)return;
     inFlight=true;lastInference=now;const token=cameraToken;
     try{
@@ -561,7 +566,7 @@
       cameraWorker.postMessage({type:'frame',bitmap,time:now},[bitmap]);
     }catch(err){inFlight=false;if(cameraEngine==='worker')startMainRecognition(token,err);else cameraFailed('画面识别',err);}
   }
-  $('cameraButton').onclick=()=>state.phase==='off'?startCamera():stopCamera();
+  $('cameraButton').onclick=()=>{if(!state.paused)state.phase==='off'?startCamera():stopCamera();};
 
   // 可选合成声音，没有外部音频文件。
   async function setupAudio(){
@@ -580,10 +585,18 @@
     // 桌面保持构图；窄屏使用较宽的虚拟视野，让双手与布偶完整出现。
     const scale=surfaceW<650?Math.min(surfaceW/1050,(surfaceH-180)/H):Math.max(surfaceW/W,surfaceH/H);
     const ox=(surfaceW-W*scale)/2,oy=surfaceW<650?(surfaceH-H*scale)/2-15:(surfaceH-H*scale)/2;
-    state.bounds={scale,ox,oy};
+    state.bounds={scale,ox,oy};state.pausePainted=false;
+  }
+  function paintScene(dt){
+    ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);ctx.fillStyle='#071222';ctx.fillRect(0,0,surfaceW,surfaceH);
+    const b=state.bounds;let shakeX=0,shakeY=0;if(waves.length&&!state.gentle){shakeX=Math.sin(state.clock*97)*state.recoil*3*state.intensity;shakeY=Math.cos(state.clock*89)*state.recoil*2*state.intensity;}
+    ctx.translate(b.ox+shakeX,b.oy+shakeY);ctx.scale(b.scale,b.scale);
+    drawBackground();drawPuppet();drawMagic(dt);
   }
   function draw(now){
-    const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;state.clock+=dt;
+    const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;
+    if(state.paused){if(!state.pausePainted){paintScene(0);state.pausePainted=true;}requestAnimationFrame(draw);return;}
+    state.pausePainted=false;state.clock+=dt;
     keyboard(dt);expireTracking(now);
     if($('guide').open){state.charging=false;state.pointerHeld=false;}
     if(state.charging&&state.spell!=='flight'){state.charge=clamp(state.charge+dt/CONFIG.chargeSeconds,0,1);state.spell='charging';}
@@ -593,22 +606,71 @@
     state.x=smooth(state.x,state.tx,CONFIG.moveSmooth,dt);state.y=smooth(state.y,state.ty+Math.sin(state.clock*1.1)*3,CONFIG.moveSmooth,dt);state.depth=smooth(state.depth,state.targetDepth,7,dt);
     state.legL=smooth(state.legL,state.targetLegL,CONFIG.jointSmooth,dt);state.legR=smooth(state.legR,state.targetLegR,CONFIG.jointSmooth,dt);
     state.armL=smooth(state.armL,state.targetArmL,CONFIG.armSmooth,dt);state.armR=smooth(state.armR,state.targetArmR,CONFIG.armSmooth,dt);state.tilt=smooth(state.tilt,state.targetTilt,9,dt);state.recoil=Math.max(0,state.recoil-dt*3);
-    ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);ctx.fillStyle='#071222';ctx.fillRect(0,0,surfaceW,surfaceH);
-    const b=state.bounds;let shakeX=0,shakeY=0;if(waves.length&&!state.gentle){shakeX=Math.sin(state.clock*97)*state.recoil*3*state.intensity;shakeY=Math.cos(state.clock*89)*state.recoil*2*state.intensity;}
-    ctx.translate(b.ox+shakeX,b.oy+shakeY);ctx.scale(b.scale,b.scale);
-    drawBackground();drawPuppet();drawMagic(dt);
+    paintScene(dt);
     if(now-uiTime>80){uiTime=now;$('chargeBar').style.width=`${state.charge*100}%`;$('spellLabel').textContent=state.spell==='flight'?'法球 · 向你飞来':state.spell==='burst'?'魔法 · 爆散':state.charge>.01?`蓄力 ${Math.round(state.charge*100)}%${state.charge>.98?' · 握拳释放':''}`:'等待一缕魔法';if(state.mode==='camera')updateTrackingUI();}
     queueInference(now);requestAnimationFrame(draw);
   }
   async function boot(){
     try{
       await Promise.all(['background','puppet','magicTexture','silverTexture'].map(name=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{images[name]=img;resolve()};img.onerror=reject;img.src='data:image/webp;base64,'+ASSETS[name];})));
-      prepareMagicTextures();buildMesh();resize();new ResizeObserver(resize).observe(canvas);updateProgress();$('loading').hidden=true;requestAnimationFrame(draw);
-    }catch(err){console.error(err);$('loadingText').textContent='场景素材未能加载。请确认 script.js 文件完整，重新解压后再打开。';}
+      prepareMagicTextures();buildMesh();resize();new ResizeObserver(resize).observe(canvas);updateProgress();
+      try{await activateCharacter(activeCharacter);}catch(err){console.warn(err);await activateCharacter('clown');}
+      $('loading').hidden=true;paintScene(0);state.pausePainted=state.paused;resolveAppReady();requestAnimationFrame(draw);
+    }catch(err){rejectAppReady(err);console.error(err);$('loadingText').textContent='场景素材未能加载。请确认 script.js 文件完整，重新解压后再打开。';}
   }
   window.addEventListener('pagehide',()=>{stopCamera();audio?.close();});
   // 测试接口仅在 ?test=1 时启用，用合成关键点和本地视频验证交互。
-  if(new URLSearchParams(location.search).has('test'))window.__theatreTest={state,analyzeHand,decideGesture,processTracking,deform,fire,reset,expireTracking,fingerControl,RIG,legAngles,stopCamera,startCamera,boot,CONFIG,getCamera:()=>({worker:cameraWorker,stream:cameraStream,engine:cameraEngine,diagnostics:cameraDiagnostics}),setCameraMode:()=>{state.mode='camera';state.phase='test';},setMouseMode:()=>{state.mode='mouse';state.phase='off';}};
+  if(new URLSearchParams(location.search).has('test'))window.__theatreTest={state,analyzeHand,decideGesture,processTracking,deform,fire,reset,expireTracking,fingerControl,get RIG(){return RIG},legAngles,stopCamera,startCamera,boot,CONFIG,getCamera:()=>({worker:cameraWorker,stream:cameraStream,engine:cameraEngine,diagnostics:cameraDiagnostics}),setCameraMode:()=>{state.mode='camera';state.phase='test';},setMouseMode:()=>{state.mode='mouse';state.phase='off';}};
+
+
+  const CLOWN_RIG=Object.fromEntries(Object.entries(RIG).map(([name,point])=>[name,{...point}]));
+  let activeCharacter='clown',characterOperation=0,resolveAppReady,rejectAppReady;
+  try{const saved=localStorage.getItem('stringkeeper-character');const id=saved?.startsWith('"')?JSON.parse(saved):saved;if(id==='wood')activeCharacter='wood';}catch{}
+  const appReady=new Promise((resolve,reject)=>{resolveAppReady=resolve;rejectAppReady=reject;});
+  // The landing overlay reports failures; this also avoids an unhandled rejection in direct tests.
+  appReady.catch(()=>{});
+  function woodenPose(){return {clock:state.clock,tilt:state.tilt,arms:{left:armAngles('left'),right:armAngles('right')},legs:{left:legAngles('left'),right:legAngles('right')}};}
+  async function activateCharacter(id){
+    if(!['clown','wood'].includes(id))throw new Error('Unknown puppet: '+id);
+    if(id==='wood'){
+      if(!window.WoodCharacter)throw new Error('Wooden character module did not load');
+      await window.WoodCharacter.ready;
+    }
+    activeCharacter=id;
+    Object.assign(RIG,id==='wood'?window.WoodCharacter.rig:CLOWN_RIG);
+    state.pausePainted=false;
+  }
+  window.TheatreApp={
+    ready:appReady,
+    characters:[
+      {id:'clown',nameZh:'红发女孩',nameEn:'Scarlet Doll',image:'assets/character-clown.webp'},
+      {id:'wood',nameZh:'木质人偶',nameEn:'Wooden Puppet',image:'assets/character-wood.png'}
+    ],
+    get paused(){return state.paused;},
+    getCharacter(){return activeCharacter;},
+    pause(paused){
+      state.paused=Boolean(paused);state.pausePainted=false;lastFrame=performance.now();
+      if(paused){
+        if(state.phase!=='off')stopCamera();
+        clearInput();state.charge=0;state.spell='idle';projectiles.length=particles.length=waves.length=0;
+        $('chargeBar').style.width='0%';
+      }
+      if(audioMaster&&audio)audioMaster.gain.setTargetAtTime(!paused&&state.sound?.22:0,audio.currentTime,.08);
+    },
+    async setCharacter(id){
+      const operation=++characterOperation;
+      await appReady;
+      if(id==='wood')await window.WoodCharacter.ready;
+      if(operation!==characterOperation)return;
+      await activateCharacter(id);
+      clearInput();state.armL=state.armR=state.legL=state.legR=state.tilt=state.targetTilt=0;
+      state.x=state.tx=W*.5;state.y=state.ty=527;state.depth=state.targetDepth=1;state.charge=0;state.spell='idle';
+      projectiles.length=particles.length=waves.length=0;
+      try{localStorage.setItem('stringkeeper-character',id);}catch{}
+      if(state.paused){paintScene(0);state.pausePainted=true;}
+      window.dispatchEvent(new CustomEvent('theatre-character-change',{detail:{character:id}}));
+    }
+  };
 
   /* Embedded third-party components: MediaPipe Tasks Vision 0.10.18 (Google LLC), Apache License 2.0. Official models: Google MediaPipe Hand Landmarker and Face Landmarker. Source: https://github.com/google-ai-edge/mediapipe ; License: https://www.apache.org/licenses/LICENSE-2.0 . The original notices are retained inside the packed JavaScript resources. Generated scene artwork is derived from the user's approved references using OpenAI image generation. */
 /*
