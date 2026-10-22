@@ -14,6 +14,8 @@
 .entry-vignette{position:absolute;inset:0;background:linear-gradient(90deg,#02030ed9,transparent 24%,transparent 76%,#02030ed9),linear-gradient(0deg,#02040ee8,transparent 22%,transparent 80%,#0007);z-index:2}
 .entry-eye-wrap{position:absolute;left:50%;top:0;width:min(47vh,470px);height:auto;transform:translateX(-50%);transform-origin:50% 59%;transition:opacity .5s,filter .6s;will-change:transform}
 .entry-eye-svg{display:block;width:100%;height:auto;overflow:visible;filter:drop-shadow(0 0 30px #0e167135)}
+.entry-pendulum{transform-origin:250px -40px}
+.entry-closed-seam{opacity:0;pointer-events:none}
 .entry-eye-talisman{transform-origin:250px 218px;animation:entry-eye-sway 8s ease-in-out infinite}
 .entry-eye-gaze{transform:translate(var(--gaze-x),var(--gaze-y));transition:transform .7s ease-out}
 .entry-eye-halo{animation:entry-eye-breathe 6s ease-in-out infinite}
@@ -52,9 +54,29 @@
 .entry-role-hint{font:10px/1.7 "Microsoft YaHei",sans-serif;color:#71839f;letter-spacing:1px;text-align:center;margin:15px 0 0}.entry-role-status{position:absolute;bottom:15px;font:11px/1.5 "Microsoft YaHei",sans-serif;color:#bfacb5;letter-spacing:1px;margin:0}
 .entry-skip{position:absolute;right:4%;top:5%;padding:10px 14px!important;font:12px "Microsoft YaHei",sans-serif!important;letter-spacing:2px;border:1px solid #a0b3cd44!important;color:#b3c2d7!important;z-index:3;background:#03081155!important;animation:entry-content-appear .5s ease both}
 .entry-intro-caption{position:absolute;left:0;right:0;bottom:12%;text-align:center;color:#b9c9e0;font-size:14px;letter-spacing:5px;opacity:0;pointer-events:none;transform:translateY(8px);margin:0}
-.is-intro .entry-eye-wrap{opacity:1;filter:none}.is-intro .entry-eye-talisman{animation:none}.is-intro .entry-eye-gaze{transform:none}.is-intro .entry-upper-lid{animation:none;transform:translateY(-46px)}.is-intro .entry-lower-lid{animation:none;transform:translateY(46px)}
-.is-opening .entry-eye-wrap{animation:entry-aperture-journey 3.6s cubic-bezier(.56,.05,.44,1) both}.is-opening .entry-eye-ball{animation:entry-eye-awaken 1.1s ease both}.is-opening .entry-upper-lid{animation:entry-lid-awaken-upper .95s ease both}.is-opening .entry-lower-lid{animation:entry-lid-awaken-lower .95s ease both}.is-opening .entry-pupil{transform-origin:250px 404px;animation:entry-pupil-open 3.5s ease-in both}.is-opening .entry-eye-halo{animation:entry-awaken-halo 2.6s ease both}.is-opening .entry-intro-caption{animation:entry-intro-caption 2.2s .2s ease both}.is-opening{animation:entry-stage-reveal 3.6s linear both}.is-opening .entry-fog-front{animation:entry-fog-rush 3.6s ease both}
-.is-opening.is-gentle{animation:entry-gentle-reveal .35s ease both!important}.is-opening.is-gentle .entry-eye-wrap,.is-opening.is-gentle .entry-eye-ball,.is-opening.is-gentle .entry-pupil,.is-opening.is-gentle .entry-eye-halo,.is-opening.is-gentle .entry-upper-lid,.is-opening.is-gentle .entry-lower-lid,.is-opening.is-gentle .entry-fog-front{animation:none!important}.is-opening.is-gentle .entry-intro-caption{display:none}
+/* One timeline: closed-eye pendulum, settle, open, then travel into the pupil. */
+.is-intro .entry-eye-wrap{opacity:1;filter:none;top:50%;width:min(45vh,470px);transform:translate(-50%,-59.4118%);transform-origin:50% 59.4118%;transition:none}
+.is-intro .entry-eye-talisman{animation:none}
+.is-intro .entry-eye-gaze{transform:none;transition:none}
+.is-intro .entry-upper-lid,.is-intro .entry-lower-lid{animation:none;transform:translateY(0)}
+.is-intro .entry-eye-outline,.is-intro .entry-open-contour{opacity:0}
+.is-intro .entry-closed-seam{opacity:1}
+.is-intro .entry-intro-caption{display:none}
+.is-intro .entry-atmosphere{background:radial-gradient(ellipse at 50% 32%,#010108 18%,#050322 63%,#120b4c 100%)}
+.is-intro .entry-fog,.is-intro .entry-cloud-texture{opacity:.12}
+.is-opening .entry-pendulum{animation:entry-pendulum-arrive var(--entry-intro-duration) linear both}
+.is-opening .entry-eye-wrap{animation:entry-aperture-journey var(--entry-intro-duration) linear both}
+.is-opening .entry-eye-ball{animation:entry-eye-awaken var(--entry-intro-duration) linear both}
+.is-opening .entry-upper-lid{animation:entry-lid-awaken-upper var(--entry-intro-duration) linear both}
+.is-opening .entry-lower-lid{animation:entry-lid-awaken-lower var(--entry-intro-duration) linear both}
+.is-opening .entry-closed-seam{animation:entry-seam-open var(--entry-intro-duration) linear both}
+.is-opening .entry-eye-outline,.is-opening .entry-open-contour{animation:entry-contour-open var(--entry-intro-duration) linear both}
+.is-opening .entry-pupil{transform-origin:250px 404px;animation:entry-pupil-open var(--entry-intro-duration) linear both}
+.is-opening .entry-eye-halo{animation:entry-awaken-halo var(--entry-intro-duration) linear both}
+.is-opening{animation:entry-stage-reveal var(--entry-intro-duration) linear both}
+.is-opening .entry-fog-front{animation:entry-fog-rush var(--entry-intro-duration) linear both}
+.is-opening.is-gentle{animation:entry-gentle-reveal .35s ease both!important}
+.is-opening.is-gentle .entry-eye-wrap,.is-opening.is-gentle .entry-pendulum,.is-opening.is-gentle .entry-eye-ball,.is-opening.is-gentle .entry-pupil,.is-opening.is-gentle .entry-eye-halo,.is-opening.is-gentle .entry-upper-lid,.is-opening.is-gentle .entry-lower-lid,.is-opening.is-gentle .entry-fog-front,.is-opening.is-gentle .entry-closed-seam,.is-opening.is-gentle .entry-open-contour,.is-opening.is-gentle .entry-eye-outline{animation:none!important}
 .entry-game-toolbar{position:fixed;left:50%;top:20px;transform:translateX(-50%);z-index:24;display:flex;gap:14px;align-items:center;padding:7px 13px;background:#030a16aa;border:1px solid #9daeca24;backdrop-filter:blur(8px);border-radius:2px;font:11px "Microsoft YaHei",sans-serif;color:#b6c7dc}
 .entry-game-toolbar button{display:flex;align-items:center;gap:7px;color:inherit;font-size:11px;padding:4px 2px;background:none;white-space:nowrap}.entry-game-toolbar button>span:first-child{font:16px Georgia,serif}.entry-game-toolbar button:hover{color:#fff}.entry-game-toolbar i{width:1px;height:13px;background:#a0b3ca44}
 .entry-dialog{z-index:100;width:min(590px,calc(100% - 36px));max-height:86svh;margin:auto;padding:38px 40px 32px;border:1px solid #8b9fb84a;background:linear-gradient(160deg,#101a2bf5,#071121fa);box-shadow:0 20px 120px #000a;backdrop-filter:blur(18px);color:#d4deed;border-radius:2px;scrollbar-width:thin;scrollbar-color:#6b7d9655 transparent;font:12px "Microsoft YaHei",sans-serif}
@@ -66,17 +88,30 @@
 @keyframes entry-blink-upper{0%,2%,6%,100%{transform:translateY(-116px)}3.5%,4%{transform:translateY(0)}}
 @keyframes entry-blink-lower{0%,2%,6%,100%{transform:translateY(116px)}3.5%,4%{transform:translateY(0)}}
 @keyframes entry-content-appear{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-@keyframes entry-lid-awaken-upper{from{transform:translateY(-46px)}to{transform:translateY(-116px)}}
-@keyframes entry-lid-awaken-lower{from{transform:translateY(46px)}to{transform:translateY(116px)}}
-@keyframes entry-eye-awaken{from{filter:brightness(.6)}to{filter:brightness(1.15)}}
-@keyframes entry-aperture-journey{0%{transform:translateX(-50%) scale(1)}28%{transform:translateX(-50%) scale(1.06)}47%{transform:translateX(-50%) scale(1.03)}83%,100%{transform:translateX(-50%) scale(16)}}
-@keyframes entry-pupil-open{0%,30%{transform:scale(.85)}45%{transform:scale(1.08)}78%,100%{transform:scale(2.9)}}
-@keyframes entry-awaken-halo{0%{opacity:.1}45%{opacity:.7}100%{opacity:.05}}
-@keyframes entry-intro-caption{0%{opacity:0;transform:translateY(8px)}25%,62%{opacity:.8;transform:translateY(0)}100%{opacity:0;transform:translateY(0)}}
-@keyframes entry-stage-reveal{0%,70%{opacity:1}100%{opacity:0}}
-@keyframes entry-fog-rush{0%{transform:scale(1);opacity:.65}65%{transform:scale(1.45);opacity:.8}100%{transform:scale(2);opacity:0}}
+/* Alternating peaks diminish before the lids open; the cord shares the pivot. */
+@keyframes entry-pendulum-arrive{
+  0%{transform:rotate(-23deg);animation-timing-function:cubic-bezier(.36,0,.64,1)}
+  12%{transform:rotate(17deg);animation-timing-function:cubic-bezier(.36,0,.64,1)}
+  24%{transform:rotate(-10deg);animation-timing-function:cubic-bezier(.36,0,.64,1)}
+  35%{transform:rotate(5deg);animation-timing-function:cubic-bezier(.36,0,.64,1)}
+  44%{transform:rotate(-1.6deg);animation-timing-function:ease-out}
+  51%,100%{transform:rotate(0deg)}
+}
+@keyframes entry-lid-awaken-upper{0%,47%{transform:translateY(0);animation-timing-function:cubic-bezier(.2,.7,.3,1)}65%,100%{transform:translateY(-116px)}}
+@keyframes entry-lid-awaken-lower{0%,47%{transform:translateY(0);animation-timing-function:cubic-bezier(.2,.7,.3,1)}65%,100%{transform:translateY(116px)}}
+@keyframes entry-seam-open{0%,47%{opacity:1}52%,100%{opacity:0}}
+@keyframes entry-contour-open{0%,48%{opacity:0}60%,100%{opacity:.48}}
+@keyframes entry-eye-awaken{0%,47%{filter:brightness(1)}65%,100%{filter:brightness(1.1)}}
+@keyframes entry-aperture-journey{
+  0%,65%{transform:translate(-50%,-59.4118%) scale(1);animation-timing-function:cubic-bezier(.65,0,.85,.45)}
+  88%,100%{transform:translate(-50%,-59.4118%) scale(18)}
+}
+@keyframes entry-pupil-open{0%,62%{transform:scale(1);animation-timing-function:ease-in}87%,100%{transform:scale(2.8)}}
+@keyframes entry-awaken-halo{0%,45%{opacity:.05}62%{opacity:.4}87%,100%{opacity:0}}
+@keyframes entry-stage-reveal{0%,88%{opacity:1}100%{opacity:0}}
+@keyframes entry-fog-rush{0%,65%{transform:scale(1);opacity:.1}82%{transform:scale(1.4);opacity:.25}100%{transform:scale(2);opacity:0}}
 @keyframes entry-gentle-reveal{from{opacity:1}to{opacity:0}}
 @media(max-height:740px) and (min-width:651px){.entry-eye-wrap{width:43vh}.entry-menu{top:78%;gap:10px}.entry-enter{font-size:32px}.entry-menu-link{font-size:20px}.entry-role-screen{padding:36px 25px 25px}.entry-role-heading{margin-bottom:16px}.entry-role-heading h2{font-size:25px;margin-bottom:8px}.entry-small-ornament{margin-bottom:6px}.entry-role-portrait{height:27vh;min-height:135px}.entry-role-card{padding-bottom:12px!important}.entry-selected{margin-top:10px}.entry-role-confirm{margin-top:17px}.entry-role-hint{margin-top:11px}}
 @media(max-width:650px){.entry-eye-wrap{width:min(82vw,42vh);top:3vh}.entry-menu{top:74%;gap:20px}.entry-enter{font-size:30px;min-width:230px;padding:8px 19px!important}.entry-enter:before,.entry-enter:after{width:40px}.entry-menu-link{font-size:20px}.entry-language{font-size:12px!important;bottom:3%;right:4%}.entry-role-screen{padding:72px 22px 52px;justify-content:center}.entry-back{top:3%;left:4%;font-size:13px}.entry-role-heading{margin-bottom:22px}.entry-role-heading h2{font-size:25px}.entry-role-heading p{font-size:10px}.entry-role-grid{gap:14px;width:100%;max-width:440px}.entry-role-card{padding:10px 8px 14px!important}.entry-role-portrait{height:27vh;min-height:130px;margin-bottom:6px}.entry-role-name{font-size:17px;letter-spacing:1px;margin-top:5px}.entry-role-desc{font-size:8px;letter-spacing:0;white-space:normal;max-width:130px;min-height:25px}.entry-selected{font-size:9px;margin-top:10px;letter-spacing:1px}.entry-role-confirm{font-size:17px;margin-top:26px}.entry-role-hint{font-size:9px;width:90%;line-height:1.9;max-width:300px}.entry-role-status{bottom:21px;max-width:90%;text-align:center}.entry-game-toolbar{top:8px;gap:10px;padding:4px 10px}.entry-game-toolbar button{font-size:9px;gap:5px}.entry-game-toolbar button>span:first-child{font-size:13px}.entry-dialog{padding:34px 25px 25px}.entry-dialog h2{font-size:23px}.entry-skip{top:3%;right:4%;font-size:10px!important}.entry-intro-caption{font-size:12px}}
 @media(max-width:650px) and (max-height:670px){.entry-eye-wrap{width:38vh}.entry-menu{top:76%;gap:12px}.entry-role-screen{padding-top:40px;padding-bottom:30px}.entry-role-heading{margin-bottom:12px}.entry-role-heading h2{font-size:22px}.entry-small-ornament{display:none}.entry-role-portrait{height:23vh;min-height:105px}.entry-role-confirm{margin-top:17px}.entry-role-hint{margin-top:10px}.entry-role-name{font-size:16px}.entry-selected{margin-top:6px}}
-@media(prefers-reduced-motion:reduce){.entry-eye-talisman,.entry-eye-halo,.entry-upper-lid,.entry-lower-lid,.entry-fog,.entry-cloud-texture,.entry-role-screen{animation:none!important}.entry-eye-gaze,.entry-eye-wrap,.entry-role-card,.entry-role-portrait img{transition:none!important}.is-opening{animation:entry-reduced-reveal .35s ease both!important}.is-opening .entry-eye-wrap,.is-opening .entry-eye-ball,.is-opening .entry-pupil,.is-opening .entry-intro-caption,.is-opening .entry-fog-front{animation:none!important}.entry-intro-caption{display:none}@keyframes entry-reduced-reveal{from{opacity:1}to{opacity:0}}}
+@media(prefers-reduced-motion:reduce){.entry-eye-talisman,.entry-eye-halo,.entry-upper-lid,.entry-lower-lid,.entry-fog,.entry-cloud-texture,.entry-role-screen{animation:none!important}.entry-eye-gaze,.entry-eye-wrap,.entry-role-card,.entry-role-portrait img{transition:none!important}.is-opening{animation:entry-reduced-reveal .35s ease both!important}.is-opening .entry-eye-wrap,.is-opening .entry-pendulum,.is-opening .entry-eye-ball,.is-opening .entry-pupil,.is-opening .entry-intro-caption,.is-opening .entry-fog-front,.is-opening .entry-closed-seam,.is-opening .entry-open-contour,.is-opening .entry-eye-outline{animation:none!important}.entry-intro-caption{display:none}@keyframes entry-reduced-reveal{from{opacity:1}to{opacity:0}}}

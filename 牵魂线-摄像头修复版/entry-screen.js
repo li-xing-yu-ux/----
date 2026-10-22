@@ -9,6 +9,7 @@
     return;
   }
   const $ = (selector, scope = document) => scope.querySelector(selector);
+  const introDuration = 4400;
   const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const copy = {
     zh: { enter: '进入游戏', guide: '玩法说明', settings: '设置', choose: '选择你的布偶', chooseHint: '同一根线，两种灵魂。', back: '返回', confirm: '牵起它', selected: '已选择', ready: '准备进入', loading: '正在整理牵线…', loadError: '场景加载失败，请刷新页面重试。', changeError: '角色暂时未能载入，请再试一次。', skip: '跳过动画', menu: '返回首页', change: '切换角色', lang: '中文 / EN', close: '关闭', hint: '选择角色后进入，摄像头由你手动开启。', guideTitle: '牵起第一根线', guideLead: '可以使用鼠标排演，也可以在进入后开启体感。', handTitle: '右手 · 牵线', handBody: '移动掌心带动布偶。弯曲大拇指、小拇指控制双臂；食指、无名指轻轻带动双腿。', magicTitle: '左手 · 施法', magicBody: '半握手掌蓄力，握拳释放魔法。转动张开的手掌控制远近。', mouseTitle: '鼠标 · 排演', mouseBody: '移动鼠标牵线，按住蓄力，松开投掷。Q / E 抬臂，Z / C 抬腿，A / D 扭曲，滚轮控制远近。', privacy: '摄像头只在你点击“开启体感”后启动，影像仅在本机识别。', sensitivity: '牵线灵敏度', intensity: '魔法强度', gentle: '柔和模式', gentleHint: '减弱闪光与震动', swap: '交换左右手识别', settingsHint: '设置会立即用于这次排演。', roleLabel: '布偶角色', introLabel: '正在进入蓝雾中的剧场', opening: '牵线已就绪', roleClown: '红发女孩', roleWood: '木质人偶', descClown: '瓷白关节 · 绯红发辫', descWood: '旧木纹理 · 赤色悬线' },
@@ -21,12 +22,13 @@
 
   const eye = `<svg class="entry-eye-svg" viewBox="0 0 500 680" aria-hidden="true" focusable="false">
     <defs>
-      <radialGradient id="entryShell" cx="42%" cy="35%" r="70%"><stop stop-color="#243bb3"/><stop offset=".53" stop-color="#141a76"/><stop offset="1" stop-color="#040b37"/></radialGradient>
+      <radialGradient id="entryShell" gradientUnits="userSpaceOnUse" cx="221" cy="351" r="270"><stop stop-color="#243bb3"/><stop offset=".53" stop-color="#141a76"/><stop offset="1" stop-color="#040b37"/></radialGradient>
       <radialGradient id="entryIris"><stop offset=".15" stop-color="#210309"/><stop offset=".52" stop-color="#710b1c"/><stop offset=".85" stop-color="#ad2036"/><stop offset="1" stop-color="#35030d"/></radialGradient>
       <radialGradient id="entrySclera"><stop stop-color="#e9ebed"/><stop offset=".66" stop-color="#bec4dc"/><stop offset="1" stop-color="#72799e"/></radialGradient>
       <clipPath id="entryEyeOpening"><path d="M93 404 Q165 304 250 307 Q337 304 407 404 Q331 506 250 504 Q168 506 93 404Z"/></clipPath>
       <filter id="entryEyeHalo" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="13"/></filter>
     </defs>
+    <g class="entry-pendulum">
     <g class="entry-cord" fill="none" stroke="#444c9b" stroke-width="1.8"><path d="M251-50 C246 33 258 94 250 155 S253 203 247 225"/><path d="M246-50 C242 31 253 109 245 164 S249 204 243 225" opacity=".4"/></g>
     <g class="entry-eye-talisman">
       <circle class="entry-eye-halo" cx="250" cy="404" r="168" fill="#3b40cf" opacity=".23" filter="url(#entryEyeHalo)"/>
@@ -48,8 +50,10 @@
         <path class="entry-upper-lid" d="M73 290H427V411 Q250 413 73 411Z" fill="url(#entryShell)"/>
         <path class="entry-lower-lid" d="M73 516H427V401 Q250 400 73 401Z" fill="url(#entryShell)"/>
       </g>
-      <path d="M101 398 Q169 308 250 310 Q334 308 400 398 M103 413 Q177 497 250 499 Q328 497 398 414" fill="none" stroke="#d9e2ed" stroke-width="1.8" opacity=".48"/>
+      <path class="entry-open-contour" d="M101 398 Q169 308 250 310 Q334 308 400 398 M103 413 Q177 497 250 499 Q328 497 398 414" fill="none" stroke="#d9e2ed" stroke-width="1.8" opacity=".48"/>
       <path d="M94 403 Q77 401 73 395 M407 403 Q423 400 428 395 M131 327q12-9 24-11m197 12-22-12M155 487q17 13 38 17m114 0q20-6 39-18" fill="none" stroke="#040820" stroke-width="3" stroke-linecap="round"/>
+      <path class="entry-closed-seam" d="M94 404 Q250 463 407 404" fill="none" stroke="#030616" stroke-width="4" stroke-linecap="round"/>
+    </g>
     </g>
   </svg>`;
 
@@ -60,6 +64,7 @@
     <div class="entry-menu" id="entryMenu"><button class="entry-enter" id="entryEnter" data-text="enter" disabled></button><button class="entry-menu-link" id="entryGuide" data-text="guide"></button><button class="entry-menu-link" id="entrySettings" data-text="settings"></button><p class="entry-load-status" id="entryLoadStatus" role="status" aria-live="polite"></p></div>
     <section class="entry-role-screen" id="entryRoles" hidden aria-labelledby="entryRoleTitle"><button class="entry-back" id="entryBack"><span aria-hidden="true">←</span> <span data-text="back"></span></button><div class="entry-role-heading"><span class="entry-small-ornament" aria-hidden="true">◇</span><h2 id="entryRoleTitle" data-text="choose"></h2><p data-text="chooseHint"></p></div><div class="entry-role-grid" id="entryRoleGrid" role="group"></div><button class="entry-role-confirm" id="entryConfirm" data-text="confirm"></button><p class="entry-role-hint" data-text="hint"></p><p id="entryRoleStatus" class="entry-role-status" role="status" aria-live="polite"></p></section>
     <button class="entry-language" id="entryLanguage" data-text="lang"></button><button class="entry-skip" id="entrySkip" data-text="skip" hidden></button><p class="entry-intro-caption" id="entryIntroCaption" data-text="opening" aria-live="polite"></p>`;
+  root.style.setProperty('--entry-intro-duration', introDuration+'ms');
   document.body.append(root);
   const toolbar = document.createElement('div');
   toolbar.className = 'entry-game-toolbar'; toolbar.hidden = true; toolbar.setAttribute('data-no-i18n', '');
@@ -137,8 +142,13 @@
     screen = 'intro'; root.className = 'entry-screen is-intro' + (gentle ? ' is-gentle' : ''); root.setAttribute('aria-label', t('introLabel'));
     $('#entryMenu', root).hidden = true; $('#entryRoles', root).hidden = true; $('#entryLanguage', root).hidden = true; $('#entrySkip', root).hidden = false;
     $('#entrySkip', root).focus({preventScroll:true});
-    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.add('is-opening')));
-    timer = setTimeout(finishIntro, gentle ? 350 : 3600);
+    // Start the fallback clock with the actual animation, and ignore a skipped
+    // or replaced entrance before the queued frames have run.
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (!entering || screen !== 'intro' || operation !== currentOperation) return;
+      root.classList.add('is-opening');
+      timer = setTimeout(finishIntro, (gentle ? 350 : introDuration) + 150);
+    }));
   }
   function renderDialog(kind) {
     const content = $('#entryDialogContent', dialog); dialog.dataset.kind = kind;
@@ -163,6 +173,9 @@
   $('#entryBack', root).addEventListener('click', openMenu);
   $('#entryConfirm', root).addEventListener('click', start);
   $('#entrySkip', root).addEventListener('click', finishIntro);
+  root.addEventListener('animationend', event => {
+    if (event.target === root && ['entry-stage-reveal','entry-gentle-reveal','entry-reduced-reveal'].includes(event.animationName)) finishIntro();
+  });
   $('#entryGuide', root).addEventListener('click', () => openDialog('guide'));
   $('#entrySettings', root).addEventListener('click', () => openDialog('settings'));
   $('#entryLanguage', root).addEventListener('click', () => { if (window.TheatreI18n) window.TheatreI18n.setLanguage(language === 'en' ? 'zh' : 'en'); else { language = language === 'en' ? 'zh' : 'en'; localize(); } });
